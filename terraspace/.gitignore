@@ -15,6 +15,7 @@ terraform.tfvars
 *.gem
 *.rbc
 .env*
+!.env.example
 .idea
 /.bundle
 /.config
