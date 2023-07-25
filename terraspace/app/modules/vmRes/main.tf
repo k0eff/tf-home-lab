@@ -15,6 +15,13 @@ data "vsphere_resource_pool" "pool" {
   datacenter_id = data.vsphere_datacenter.datacenter[count.index].id
 }
 
+data "vsphere_network" "network" {
+  count = length(var.virtual_machines)
+  name          = var.virtual_machines[count.index].network_id
+  datacenter_id = data.vsphere_datacenter.datacenter[count.index].id
+}
+
+
 resource "vsphere_virtual_machine" "vm" {
   count = length(var.virtual_machines)
 
@@ -28,7 +35,7 @@ resource "vsphere_virtual_machine" "vm" {
   dynamic "disk" {
     for_each = var.virtual_machines[count.index].disk
     content {
-      label          = "disk${disk.key}"
+      label          = "${var.virtual_machines[count.index].name}-disk${disk.key}"
       size           = disk.value.size
       eagerly_scrub  = lookup(disk.value, "eagerly_scrub", false)
       thin_provisioned = lookup(disk.value, "thin_provisioned", true)
@@ -37,6 +44,6 @@ resource "vsphere_virtual_machine" "vm" {
   }
 
   network_interface {
-    network_id = var.virtual_machines[count.index].network_id
+    network_id = data.vsphere_network.network[count.index].id
   }
 }

@@ -6,12 +6,12 @@ virtual_machines = [{
     num_cpus      = 1
     memory        = 8192
     guest_id      = "debian11_64Guest"
-    network_id    = "network-id-2"
+    network_id    = "VM Network"
     disk = [
       {
         size          = 80
         thin_provisioned = true
-        datastore_id  = "datastore-id-3"
+        datastore_id  = "64b94188-94a036a8-6947-8c1645927892"
       },
     ]
   }
