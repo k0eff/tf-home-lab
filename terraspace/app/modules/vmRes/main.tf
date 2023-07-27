@@ -43,6 +43,11 @@ resource "vsphere_virtual_machine" "vm" {
     }
   }
 
+  cdrom {
+    datastore_id  = try(var.virtual_machines[count.index].cdrom.datastore, null)
+    path          = try(var.virtual_machines[count.index].cdrom.path)
+  }
+
   network_interface {
     network_id = data.vsphere_network.network[count.index].id
   }
