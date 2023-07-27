@@ -4,15 +4,19 @@ virtual_machines = [{
     resource_pool = "<%= @esxiHostname %>/Resources"
     datastore     = "datastore1"
     num_cpus      = 1
-    memory        = 8192
-    guest_id      = "debian11_64Guest"
+    memory        = 4096
+    guest_id      = "ubuntu64Guest"
     network_id    = "VM Network"
     disk = [
       {
-        size          = 80
+        size          = 40
         thin_provisioned = true
         datastore_id  = "64b94188-94a036a8-6947-8c1645927892"
       },
     ]
+    cdrom = {
+      datastore = "64b94188-94a036a8-6947-8c1645927892"
+      path      = "images/ubuntu-22.04.2-live-server-amd64.iso"
+    }
   }
 ]

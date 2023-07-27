@@ -11,7 +11,7 @@ terraform {
   }
 
   backend "local" {
-    path = "<%= expansion('./:ROLE/:ENV/:EXTRA/:BUILD_DIR/terraform.tfstate') %>"
+    path = "<%= expansion('./state/terraform.tfstate') %>"
   }
 }
 

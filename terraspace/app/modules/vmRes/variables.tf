@@ -14,5 +14,9 @@ variable "virtual_machines" {
       datastore_id      = optional(string)
     }))
     network_id    = string
+    cdrom = optional(object({
+      datastore = optional(string)
+      path      = optional(string)
+    }))
   }))
 }
