@@ -18,5 +18,12 @@ variable "virtual_machines" {
       datastore = optional(string)
       path      = optional(string)
     }))
+    clone = optional(object({
+      vmName    = optional(string)
+      hostname  = optional(string)
+      domain    = optional(string)
+      ipv4      = optional(string)
+      gw        = optional(string)
+    }))
   }))
 }

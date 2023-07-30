@@ -1,17 +1,20 @@
+// TODO: change all of these to a map of objects and use for_each
+// TODO: use module instead of data? (will require exporting all vars)
+
 data "vsphere_datacenter" "datacenter" {
   count = length(var.virtual_machines)
-  name = var.virtual_machines[count.index].dcName
+  name  = var.virtual_machines[count.index].dcName
 }
 
 data "vsphere_datastore" "datastore" {
   count = length(var.virtual_machines)
-  name = var.virtual_machines[count.index].datastore
+  name  = var.virtual_machines[count.index].datastore
   datacenter_id = data.vsphere_datacenter.datacenter[count.index].id
 }
 
 data "vsphere_resource_pool" "pool" {
   count = length(var.virtual_machines)
-  name = var.virtual_machines[count.index].resource_pool
+  name  = var.virtual_machines[count.index].resource_pool
   datacenter_id = data.vsphere_datacenter.datacenter[count.index].id
 }
 
@@ -20,6 +23,14 @@ data "vsphere_network" "network" {
   name          = var.virtual_machines[count.index].network_id
   datacenter_id = data.vsphere_datacenter.datacenter[count.index].id
 }
+
+data "vsphere_virtual_machine" "cloneTemplate" {
+  count = length(var.virtual_machines)
+  name          = try(var.virtual_machines[count.index].clone.vmName, null)
+  datacenter_id = try(var.virtual_machines[count.index].clone.vmName, null) != null ? data.vsphere_datacenter.datacenter[count.index].id : null
+}
+
+
 
 
 resource "vsphere_virtual_machine" "vm" {
@@ -50,5 +61,23 @@ resource "vsphere_virtual_machine" "vm" {
 
   network_interface {
     network_id = data.vsphere_network.network[count.index].id
+  }
+
+  dynamic "clone" {
+    for_each = var.virtual_machines
+    content {
+      template_uuid = data.cloneTemplate[count.index].id
+      customize {
+        linux_options {
+          host_name = try(var.virtual_machines[count.index].clone.hostname, null)
+          domain = try(var.virtual_machines[count.index].clone.domain, null)
+        }
+        network_interface {
+          ipv4_address = try(var.virtual_machines[count.index].clone.ipv4, null)
+          ipv4_netmask = 24
+        }
+        ipv4_gateway = try(var.virtual_machines[count.index].clone.gw, null)
+      }
+    }
   }
 }
