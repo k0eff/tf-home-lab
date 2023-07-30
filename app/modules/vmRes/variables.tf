@@ -1,5 +1,5 @@
 variable "virtual_machines" {
-  type = list(object({
+  type = map(object({
     dcName        = string
     name          = string
     resource_pool = string
