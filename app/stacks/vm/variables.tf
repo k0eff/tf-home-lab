@@ -1,5 +1,5 @@
 variable "virtual_machines" {
-  type = list(object({
+  type = map(object({
     dcName        = string
     name          = string
     resource_pool = string
@@ -14,9 +14,16 @@ variable "virtual_machines" {
       datastore_id      = optional(string)
     }))
     network_id    = string
-    cdrom = object({
+    cdrom = optional(object({
       datastore = optional(string)
       path      = optional(string)
-    })
+    }))
+    clone = optional(object({
+      vmName    = optional(string)
+      hostname  = optional(string)
+      domain    = optional(string)
+      ipv4      = optional(string)
+      gw        = optional(string)
+    }))
   }))
 }
