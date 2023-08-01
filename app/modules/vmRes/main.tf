@@ -48,13 +48,16 @@ resource "vsphere_virtual_machine" "vm" {
       size           = disk.value.size
       eagerly_scrub  = lookup(disk.value, "eagerly_scrub", false)
       thin_provisioned = lookup(disk.value, "thin_provisioned", true)
-      datastore_id   = lookup(disk.value, "datastore_id", null)
+      datastore_id   = lookup(disk.value, "datastore_id", data.vsphere_datastore.datastore[each.key].id)
     }
   }
 
-  cdrom {
-    datastore_id  = try(var.virtual_machines[each.key].cdrom.datastore, null)
-    path          = try(var.virtual_machines[each.key].cdrom.path, null)
+  dynamic "cdrom" {
+    for_each = try(var.virtual_machines[each.key].cdrom.datastore, null) != null || try(var.virtual_machines[each.key].cdrom.path, null) != null ? [1] : []
+    content {
+      datastore_id  = try(var.virtual_machines[each.key].cdrom.datastore, null)
+      path          = try(var.virtual_machines[each.key].cdrom.path, null)
+    }
   }
 
   network_interface {

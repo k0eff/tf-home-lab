@@ -1,8 +1,8 @@
 virtual_machines = {
   vm5000 = {
-    dcName        = "MiWiFi-R3600-srv"
+    dcName        = "datacenter02"
     name          = "vm5000"
-    resource_pool = "<%= @esxiHostname %>/Resources"
+    resource_pool = "rp01"
     datastore     = "datastore1"
     num_cpus      = 1
     memory        = 4096
@@ -12,13 +12,8 @@ virtual_machines = {
       {
         size          = 40
         thin_provisioned = true
-        datastore_id  = "64b94188-94a036a8-6947-8c1645927892"
       },
     ]
-    # cdrom = {
-    #   datastore = "64b94188-94a036a8-6947-8c1645927892"
-    #   path      = "images/ubuntu-22.04.2-live-server-amd64.iso"
-    # }
     clone = {
       vmName    = "vm20"
       hostname  = "vm5000"

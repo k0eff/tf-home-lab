@@ -1,10 +1,10 @@
 options = [
   {
     vmName = "vm10"
-    dcName = "MiWiFi-R3600-srv"
+    dcName = "datacenter02"
   },
   {
     vmName = "vm20"
-    dcName = "MiWiFi-R3600-srv"
+    dcName = "datacenter02"
   }
 ]
