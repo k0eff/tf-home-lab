@@ -40,6 +40,8 @@ resource "vsphere_virtual_machine" "vm" {
   num_cpus              = var.virtual_machines[each.key].num_cpus
   memory_limit          = var.virtual_machines[each.key].memory
   guest_id              = var.virtual_machines[each.key].guest_id
+  ept_rvi_mode          = "automatic"
+  hv_mode               = "hvAuto"
 
   dynamic "disk" {
     for_each = var.virtual_machines[each.key].disk
