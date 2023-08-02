@@ -38,7 +38,8 @@ resource "vsphere_virtual_machine" "vm" {
   resource_pool_id      = data.vsphere_resource_pool.pool[each.key].id
   datastore_id          = data.vsphere_datastore.datastore[each.key].id
   num_cpus              = var.virtual_machines[each.key].num_cpus
-  memory_limit          = var.virtual_machines[each.key].memory
+  memory_limit          = var.virtual_machines[each.key].memory_limit
+  memory                = var.virtual_machines[each.key].memory
   guest_id              = var.virtual_machines[each.key].guest_id
   ept_rvi_mode          = "automatic"
   hv_mode               = "hvAuto"

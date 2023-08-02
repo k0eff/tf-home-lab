@@ -5,6 +5,7 @@ variable "virtual_machines" {
     resource_pool = string
     datastore     = optional(string)
     num_cpus      = optional(number)
+    memory_limit  = optional(number)
     memory        = optional(number)
     guest_id      = optional(string) # check here: https://vdc-download.vmware.com/vmwb-repository/dcr-public/b50dcbbf-051d-4204-a3e7-e1b618c1e384/538cf2ec-b34f-4bae-a332-3820ef9e7773/vim.vm.GuestOsDescriptor.GuestOsIdentifier.html
     disk = list(object({
