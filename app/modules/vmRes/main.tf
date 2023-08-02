@@ -65,7 +65,7 @@ resource "vsphere_virtual_machine" "vm" {
   }
 
   dynamic "clone" {
-    for_each = var.virtual_machines
+    for_each = var.virtual_machines[each.key].clone.vmName != null ? [1] : []
     content {
       template_uuid = data.vsphere_virtual_machine.cloneTemplate[each.key].id
       customize {
