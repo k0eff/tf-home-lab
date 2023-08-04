@@ -1,4 +1,4 @@
 module "storagePolicies" {
-  source   = "../../modules/vmRes"
+  source   = "../../modules/storagePolicy"
   policies = var.storagePolicies
 }

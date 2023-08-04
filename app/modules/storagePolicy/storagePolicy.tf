@@ -1,9 +1,4 @@
-data "vsphere_datacenter" "datacenter" {
-  for_each = var.policies
-  name     = var.policies[each.key].dcName
-}
-
-resource "vsphere_vm_storage_policy" "policies" {
+resource "vsphere_vm_storage_policy" "policy" {
   for_each    = var.policies
   name        = var.policies[each.key].name
   description = var.policies[each.key].description

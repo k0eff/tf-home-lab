@@ -11,16 +11,16 @@ virtual_machines = {
     network_id    = "VM Network"
     disk = [
       {
-        size          = 40
+        size             = 40
         thin_provisioned = true
       },
     ]
     clone = {
-      vmName    = "vm20"
-      hostname  = "vm5000"
-      domain    = "koeff.com"
-      ipv4      = "192.168.31.202"
-      gw        = "192.168.31.1"
+      vmName   = "vm20"
+      hostname = "vm5000"
+      domain   = "koeff.com"
+      ipv4     = "192.168.31.202"
+      gw       = "192.168.31.1"
     }
   }
 
@@ -36,16 +36,16 @@ virtual_machines = {
     network_id    = "VM Network"
     disk = [
       {
-        size          = 40
+        size             = 40
         thin_provisioned = true
       },
     ]
     clone = {
-      vmName    = "vm20"
-      hostname  = "vm6000"
-      domain    = "koeff.com"
-      ipv4      = "192.168.31.203"
-      gw        = "192.168.31.1"
+      vmName   = "vm20"
+      hostname = "vm6000"
+      domain   = "koeff.com"
+      ipv4     = "192.168.31.203"
+      gw       = "192.168.31.1"
     }
   }
 
@@ -61,16 +61,30 @@ virtual_machines = {
     network_id    = "VM Network"
     disk = [
       {
-        size          = 40
+        size             = 40
         thin_provisioned = true
       },
     ]
     clone = {
-      vmName    = "vm20"
-      hostname  = "vm7000"
-      domain    = "koeff.com"
-      ipv4      = "192.168.31.204"
-      gw        = "192.168.31.1"
+      vmName   = "vm20"
+      hostname = "vm7000"
+      domain   = "koeff.com"
+      ipv4     = "192.168.31.204"
+      gw       = "192.168.31.1"
+    }
+  }
+}
+
+storagePolicies = {
+  cluster00 = {
+    name        = "cluster00Policy"
+    description = "Policy for cluster00"
+    tagRules = {
+      clusterTags = {
+        tagCategoryName = "k8s-cluster"
+        tags            = ["cluster00"]
+        inclDsTags      = true
+      }
     }
   }
 }
