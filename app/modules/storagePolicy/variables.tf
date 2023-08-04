@@ -1,5 +1,5 @@
 variable "policies" {
-  default = []
+  default = {}
   type = map(object({
     name        = string
     description = string
