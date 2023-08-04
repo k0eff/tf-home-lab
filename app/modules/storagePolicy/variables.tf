@@ -4,9 +4,9 @@ variable "policies" {
     name        = string
     description = string
     tagRules = map(object({
-        tagCategoryName = string
-        tags = list(string)
-        inclDsTags = optional(bool, true)
+      tagCategoryName = string
+      tags            = list(string)
+      inclDsTags      = optional(bool, true)
     }))
   }))
 }
