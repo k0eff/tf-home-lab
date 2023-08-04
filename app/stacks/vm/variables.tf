@@ -29,7 +29,7 @@ variable "virtual_machines" {
   }))
 }
 
-variable "policies" {
+variable "storagePolicies" {
   default = {}
   type = map(object({
     name        = string

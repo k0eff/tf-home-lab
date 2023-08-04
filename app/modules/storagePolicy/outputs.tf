@@ -1,4 +1,4 @@
 
 output "policyIds" {
-  value = { for each in var.policies : each.key => resource.vsphere_vm_storage_policy.policies[each.key].id }
+  value = { for k, v in var.policies : k => resource.vsphere_vm_storage_policy.policy[k].id }
 }
