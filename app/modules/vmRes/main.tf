@@ -43,6 +43,7 @@ resource "vsphere_virtual_machine" "vm" {
   guest_id              = var.virtual_machines[each.key].guest_id
   ept_rvi_mode          = "automatic"
   hv_mode               = "hvAuto"
+  enable_disk_uuid      = try(var.virtual_machines[each.key].enableDiskUUID, null)
 
   dynamic "disk" {
     for_each = var.virtual_machines[each.key].disk
