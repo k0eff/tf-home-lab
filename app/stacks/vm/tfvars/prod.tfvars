@@ -1,14 +1,15 @@
 virtual_machines = {
   vm5000 = {
-    dcName        = "datacenter02"
-    name          = "vm5000"
-    resource_pool = "rp01"
-    datastore     = "datastore1"
-    num_cpus      = 1
-    memory_limit  = 8192
-    memory        = 8192
-    guest_id      = "ubuntu64Guest"
-    network_id    = "VM Network"
+    dcName         = "datacenter02"
+    name           = "vm5000"
+    resource_pool  = "rp01"
+    datastore      = "datastore1"
+    num_cpus       = 1
+    memory_limit   = 8192
+    memory         = 8192
+    guest_id       = "ubuntu64Guest"
+    network_id     = "VM Network"
+    enableDiskUUID = true
     disk = [
       {
         size             = 40
@@ -25,15 +26,16 @@ virtual_machines = {
   }
 
   vm6000 = {
-    dcName        = "datacenter02"
-    name          = "vm6000"
-    resource_pool = "rp01"
-    datastore     = "datastore1"
-    num_cpus      = 1
-    memory_limit  = 4096
-    memory        = 4096
-    guest_id      = "ubuntu64Guest"
-    network_id    = "VM Network"
+    dcName         = "datacenter02"
+    name           = "vm6000"
+    resource_pool  = "rp01"
+    datastore      = "datastore1"
+    num_cpus       = 1
+    memory_limit   = 4096
+    memory         = 4096
+    guest_id       = "ubuntu64Guest"
+    network_id     = "VM Network"
+    enableDiskUUID = true
     disk = [
       {
         size             = 40
@@ -50,15 +52,16 @@ virtual_machines = {
   }
 
   vm7000 = {
-    dcName        = "datacenter02"
-    name          = "vm7000"
-    resource_pool = "rp01"
-    datastore     = "datastore1"
-    num_cpus      = 1
-    memory_limit  = 4096
-    memory        = 4096
-    guest_id      = "ubuntu64Guest"
-    network_id    = "VM Network"
+    dcName         = "datacenter02"
+    name           = "vm7000"
+    resource_pool  = "rp01"
+    datastore      = "datastore1"
+    num_cpus       = 1
+    memory_limit   = 4096
+    memory         = 4096
+    guest_id       = "ubuntu64Guest"
+    network_id     = "VM Network"
+    enableDiskUUID = true
     disk = [
       {
         size             = 40
