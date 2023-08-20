@@ -80,7 +80,7 @@ virtual_machines = {
 
 
 storagePolicies = {
-  cluster00 = {
+  cluster01-dev = {
     name        = "cluster01-devPolicy"
     description = "Policy for cluster01-dev"
     tagRules = {
