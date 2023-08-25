@@ -20,7 +20,7 @@ virtual_machines = {
       vmName   = "vm20"
       hostname = "vm50"
       domain   = "koeff.com"
-      ipv4     = "192.168.31.202"
+      ipv4     = "192.168.31.150"
       gw       = "192.168.31.1"
     }
   }
