@@ -42,6 +42,31 @@ virtual_machines = {
       },
     ]
   }
+  vm70 = { // docker
+    dcName         = "datacenter02"
+    name           = "vm70"
+    resource_pool  = "rp01"
+    datastore      = "datastore1"
+    num_cpus       = 2
+    memory_limit   = 2048
+    memory         = 2048
+    guest_id       = "ubuntu64Guest"
+    network_id     = "VM Network"
+    enableDiskUUID = true
+    disk = [
+      {
+        size             = 40
+        thin_provisioned = true
+      },
+    ]
+    clone = {
+      vmName   = "vm20"
+      hostname = "vm70"
+      domain   = "koeff.com"
+      ipv4     = "192.168.31.152"
+      gw       = "192.168.31.1"
+    }
+  }
   vm5000 = { // k8s
     dcName         = "datacenter02"
     name           = "vm5000"
