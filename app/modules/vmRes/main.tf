@@ -23,13 +23,10 @@ data "vsphere_network" "network" {
 }
 
 data "vsphere_virtual_machine" "cloneTemplate" {
-  for_each = var.virtual_machines
+  for_each = { for vm in var.virtual_machines : vm.name => vm if vm.clone != null || length(coalesce(vm.clone, {})) > 0 }
   name          = try(var.virtual_machines[each.key].clone.vmName, null)
   datacenter_id = try(var.virtual_machines[each.key].clone.vmName, null) != null ? data.vsphere_datacenter.datacenter[each.key].id : null
 }
-
-
-
 
 resource "vsphere_virtual_machine" "vm" {
   for_each = var.virtual_machines
@@ -69,7 +66,7 @@ resource "vsphere_virtual_machine" "vm" {
   }
 
   dynamic "clone" {
-    for_each = var.virtual_machines[each.key].clone.vmName != null ? [1] : []
+    for_each = lookup(coalesce(var.virtual_machines[each.key].clone, {}), "vmName", null) != null ? [1] : []
     content {
       template_uuid = data.vsphere_virtual_machine.cloneTemplate[each.key].id
       customize {

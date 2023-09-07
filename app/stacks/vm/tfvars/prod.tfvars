@@ -1,5 +1,5 @@
 virtual_machines = {
-  vm50 = {
+  vm50 = { // vpn server
     dcName         = "datacenter02"
     name           = "vm50"
     resource_pool  = "rp01"
@@ -24,7 +24,25 @@ virtual_machines = {
       gw       = "192.168.31.1"
     }
   }
-  vm5000 = {
+  vm60 = { // truenas
+    dcName         = "datacenter02"
+    name           = "vm60"
+    resource_pool  = "rp01"
+    datastore      = "datastore1"
+    num_cpus       = 1
+    memory_limit   = 8196
+    memory         = 8196
+    guest_id       = "ubuntu64Guest"
+    network_id     = "VM Network"
+    enableDiskUUID = true
+    disk = [
+      {
+        size             = 60
+        thin_provisioned = true
+      },
+    ]
+  }
+  vm5000 = { // k8s
     dcName         = "datacenter02"
     name           = "vm5000"
     resource_pool  = "rp01"
@@ -50,7 +68,7 @@ virtual_machines = {
     }
   }
 
-  vm6000 = {
+  vm6000 = { // k8s
     dcName         = "datacenter02"
     name           = "vm6000"
     resource_pool  = "rp01"
@@ -76,7 +94,7 @@ virtual_machines = {
     }
   }
 
-  vm7000 = {
+  vm7000 = { // k8s
     dcName         = "datacenter02"
     name           = "vm7000"
     resource_pool  = "rp01"
