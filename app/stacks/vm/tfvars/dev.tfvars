@@ -51,7 +51,7 @@ virtual_machines = {
     }
   }
 
-  vm1200 = { # cluster00-dev
+  vm1200 = { # cluster01-dev
     dcName         = "datacenter02"
     name           = "vm1200"
     resource_pool  = "rp01"
