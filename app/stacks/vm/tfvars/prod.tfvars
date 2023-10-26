@@ -24,23 +24,30 @@ virtual_machines = {
       gw       = "192.168.31.1"
     }
   }
-  vm60 = { // truenas
+  vm60 = { // diskstorage
     dcName         = "datacenter02"
     name           = "vm60"
     resource_pool  = "rp01"
     datastore      = "datastore1"
     num_cpus       = 2
-    memory_limit   = 8192
-    memory         = 8192
+    memory_limit   = 2048
+    memory         = 2048
     guest_id       = "ubuntu64Guest"
     network_id     = "VM Network"
     enableDiskUUID = true
     disk = [
       {
-        size             = 60
+        size             = 40
         thin_provisioned = true
       },
     ]
+    clone = {
+      vmName   = "vm20"
+      hostname = "vm60"
+      domain   = "koeff.com"
+      ipv4     = "192.168.31.151"
+      gw       = "192.168.31.1"
+    }
   }
   vm70 = { // docker
     dcName         = "datacenter02"
