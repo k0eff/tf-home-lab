@@ -85,7 +85,8 @@ resource "vsphere_virtual_machine" "vm" {
   lifecycle {
     ignore_changes = [ 
       ept_rvi_mode,
-      hv_mode
+      hv_mode,
+      disk
      ]
   }
 }
