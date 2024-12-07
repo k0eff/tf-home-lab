@@ -1,5 +1,5 @@
 module "vmData" {
-  source        = "../../modules/vmData"
+  source        = "../../modules/vmware/vmData"
   count         = length(var.options)
   name          = var.options[count.index].vmName
   datacenterId  = module.dcData[count.index].id
@@ -7,7 +7,7 @@ module "vmData" {
 }
 
 module "dcData" {
-  source  = "../../modules/datacenterData"
+  source  = "../../modules/vmware/datacenterData"
   count   = length(var.options)
   name    = var.options[count.index].dcName
 }

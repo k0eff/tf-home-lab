@@ -1,4 +1,4 @@
 module "vms" {
-  source = "../../modules/vmRes"
+  source = "../../vmware/modules/vmRes"
   virtual_machines = var.virtual_machines
 }
