@@ -1,4 +1,4 @@
-virtual_machines = {
+vmware_virtual_machines = {
   vm1000 = { # cluster01-dev
     dcName         = "datacenter02"
     name           = "vm1000"
@@ -79,7 +79,7 @@ virtual_machines = {
 }
 
 
-storagePolicies = {
+vmware_storagePolicies = {
   cluster01-dev = {
     name        = "cluster01-devPolicy"
     description = "Policy for cluster01-dev"

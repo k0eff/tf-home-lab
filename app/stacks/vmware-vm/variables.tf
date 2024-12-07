@@ -1,4 +1,4 @@
-variable "virtual_machines" {
+variable "vmware_virtual_machines" {
   type = map(object({
     dcName         = string
     name           = string
@@ -30,7 +30,7 @@ variable "virtual_machines" {
   }))
 }
 
-variable "storagePolicies" {
+variable "vmware_storagePolicies" {
   default = {}
   type = map(object({
     name        = string
