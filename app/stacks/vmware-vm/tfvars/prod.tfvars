@@ -1,4 +1,4 @@
-virtual_machines = {
+vmware_virtual_machines = {
   vm50 = { // vpn server
     dcName         = "datacenter02"
     name           = "vm50"
@@ -153,7 +153,7 @@ virtual_machines = {
   }
 }
 
-storagePolicies = {
+vmware_storagePolicies = {
   cluster00 = {
     name        = "cluster00Policy"
     description = "Policy for cluster00"
