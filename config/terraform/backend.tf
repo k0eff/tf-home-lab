@@ -8,6 +8,11 @@ terraform {
       source = "hashicorp/vsphere"
       version = "2.4.1"
     }
+
+    proxmox = {
+      source  = "telmate/proxmox"
+      version = "3.0.1-rc6"
+    }
   }
 
   backend "local" {
