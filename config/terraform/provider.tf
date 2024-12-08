@@ -6,9 +6,11 @@ provider "vsphere" {
 }
 
 provider "proxmox" {
+  pm_tls_insecure = true
   pm_user = var.proxmox_user
-  pm_pass = var.proxmox_pass
+  pm_password = var.proxmox_pass
   pm_api_url = var.proxmox_api_url
+  alias = "pm"
 }
 
 variable "vsphere_user" {
