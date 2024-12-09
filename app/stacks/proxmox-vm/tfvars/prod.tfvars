@@ -9,5 +9,15 @@ proxmox_virtual_machines = {
         sockets = 1
         cores = 1
         vcpus = 1
+        disks = {
+            scsi1 = {
+                size = "40G"
+                storage = "local-lvm"
+            }
+            scsi2 = {
+                size = "45G"
+                storage = "local-lvm"
+            }
+        }
     }
 }
