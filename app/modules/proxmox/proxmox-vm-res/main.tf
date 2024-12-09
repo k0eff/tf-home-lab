@@ -17,7 +17,19 @@ resource "proxmox_vm_qemu" "proxmox_vm" {
       scsi {
         scsi0 {
           passthrough {
-            file = "local-lvm:vm-500-disk-0"
+            file = each.value.clone != null ? "local-lvm:vm-${each.value.vmid}-disk-0" : null
+          }
+        }
+        scsi1 {
+          disk {
+            size = "40G"
+            storage = "local-lvm"
+          }
+        }
+        scsi2 {
+          disk {
+            size = "45G"
+            storage = "local-lvm"
           }
         }
       }
