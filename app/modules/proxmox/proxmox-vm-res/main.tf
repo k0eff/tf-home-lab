@@ -13,24 +13,8 @@ resource "proxmox_vm_qemu" "proxmox_vm" {
     cpu_type = "host"
     vm_state = "started"
 
-
-
-  # dynamic "disk" {
-  #   for_each = [
-  #     each.value.clone != null ? {
-  #       type = "disk"
-  #       disk_file = "local-lvm:vm-${each.value.vmid}-disk-0"
-  #       passthrough = true
-  #       slot = "scsi0"
-  #     } : []
-  #   ]
-  #   content {
-
-  #   }
-  # }
-
   dynamic "disk" {
-    for_each = flatten([
+    for_each = flatten([ // 2d->1d array
       for d in [ // remove nulls
         each.value.clone != null ? {
           type        = "disk"
@@ -60,21 +44,6 @@ resource "proxmox_vm_qemu" "proxmox_vm" {
     }
   }
 
-
-    # disk {
-    #   type = "disk"
-    #   disk_file = "local-lvm:vm-${each.value.vmid}-disk-0"
-    #   passthrough = true
-    #   slot = "scsi0"
-    # }
-
-    # disk {
-    #   type = "disk"
-    #   passthrough = false
-    #   storage = "local-lvm"
-    #   slot = "scsi1"
-    #   size = "40G"
-    # }
 
     boot = "order=scsi0"
 
