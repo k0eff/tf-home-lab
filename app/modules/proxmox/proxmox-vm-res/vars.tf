@@ -9,6 +9,11 @@ variable "proxmox_virtual_machines" {
       sockets = number
       cores = number
       vcpus = number
+      disks = map(object({
+        storage = string
+        slot = string
+        size = string
+      }))
     #   cpu_type = string
     }))
 }
