@@ -16,14 +16,23 @@ resource "proxmox_vm_qemu" "proxmox_vm" {
   dynamic "disk" {
     for_each = flatten([ // 2d->1d array
       for d in [ // remove nulls
-        each.value.clone != null ? {
+        each.value.clone != null ? [{
           type        = "disk"
           disk_file   = "local-lvm:vm-${each.value.vmid}-disk-0"
           passthrough = true
           slot        = "scsi0"
           size = null
           storage = null
-        } : null,
+        },
+        {
+          type = "cloudinit"
+          storage = "local-lvm"
+          passthrough = null
+          slot = "sata0"
+          size = null
+          disk_file = null
+        }
+        ] : null,
         [for disk_key, disk_value in each.value.disks : {
           type        = "disk"
           passthrough = false
@@ -45,7 +54,26 @@ resource "proxmox_vm_qemu" "proxmox_vm" {
   }
 
 
-    boot = "order=scsi0"
+  os_type = "ubuntu"
+  boot = "order=scsi0"
+
+  network {
+    id = 0
+    model = "virtio"
+    bridge = "vmbr0"
+    mtu = 1
+  }
+  agent = 1
+  agent_timeout = 100
+  skip_ipv6 = true
+  qemu_os = "l26"
+  numa = true
+  
+  
+  ipconfig0 = each.value.ipconfig0
+  ciuser = each.value.ciuser
+  cipassword = each.value.cipassword
+
 
 }
 

@@ -9,6 +9,9 @@ variable "proxmox_virtual_machines" {
       sockets = number
       cores = number
       vcpus = number
+      ipconfig0 = string
+      ciuser = string
+      cipassword = string
       disks = map(object({
         storage = string
         slot = string
