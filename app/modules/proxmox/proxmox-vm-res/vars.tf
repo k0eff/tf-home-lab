@@ -12,11 +12,12 @@ variable "proxmox_virtual_machines" {
       ipconfig0 = string
       ciuser = string
       cipassword = string
-      disks = map(object({
+      onboot = optional(bool, false)
+      disks = optional(map(object({
         storage = string
         slot = string
         size = string
-      }))
+      })), {})
     #   cpu_type = string
     }))
 }

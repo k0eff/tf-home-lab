@@ -12,6 +12,7 @@ resource "proxmox_vm_qemu" "proxmox_vm" {
     vcpus = each.value.vcpus
     cpu_type = "host"
     vm_state = "started"
+    onboot = each.value.onboot
 
   dynamic "disk" {
     for_each = flatten([ // 2d->1d array
@@ -32,7 +33,7 @@ resource "proxmox_vm_qemu" "proxmox_vm" {
           size = null
           disk_file = null
         }
-        ] : null,
+        ] : [],
         [for disk_key, disk_value in each.value.disks : {
           type        = "disk"
           passthrough = false

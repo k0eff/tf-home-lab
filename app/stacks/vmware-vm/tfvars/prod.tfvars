@@ -10,6 +10,7 @@ vmware_virtual_machines = {
     guest_id       = "ubuntu64Guest"
     network_id     = "VM Network"
     enableDiskUUID = true
+    onboot = true
     disk = [
       {
         size             = 40
