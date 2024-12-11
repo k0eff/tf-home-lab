@@ -13,27 +13,68 @@ resource "proxmox_vm_qemu" "proxmox_vm" {
     cpu_type = "host"
     vm_state = "started"
 
-    disks {
-      scsi {
-        scsi0 {
-          passthrough {
-            file = each.value.clone != null ? "local-lvm:vm-${each.value.vmid}-disk-0" : null
-          }
-        }
-        scsi1 {
-          disk {
-            size = "40G"
-            storage = "local-lvm"
-          }
-        }
-        scsi2 {
-          disk {
-            size = "45G"
-            storage = "local-lvm"
-          }
-        }
-      }
+
+
+  # dynamic "disk" {
+  #   for_each = [
+  #     each.value.clone != null ? {
+  #       type = "disk"
+  #       disk_file = "local-lvm:vm-${each.value.vmid}-disk-0"
+  #       passthrough = true
+  #       slot = "scsi0"
+  #     } : []
+  #   ]
+  #   content {
+
+  #   }
+  # }
+
+  dynamic "disk" {
+    for_each = flatten([
+      for d in [ // remove nulls
+        each.value.clone != null ? {
+          type        = "disk"
+          disk_file   = "local-lvm:vm-${each.value.vmid}-disk-0"
+          passthrough = true
+          slot        = "scsi0"
+          size = null
+          storage = null
+        } : null,
+        [for disk_key, disk_value in each.value.disks : {
+          type        = "disk"
+          passthrough = false
+          storage     = disk_value.storage
+          slot        = disk_value.slot
+          size        = disk_value.size
+        }]
+      ] : d if d != null
+    ])
+
+    content {
+      type        = disk.value.type
+      passthrough = disk.value.passthrough
+      slot        = disk.value.slot
+      storage     = lookup(disk.value, "storage", null)
+      size        = lookup(disk.value, "size", null)
+      disk_file   = lookup(disk.value, "disk_file", null)
     }
+  }
+
+
+    # disk {
+    #   type = "disk"
+    #   disk_file = "local-lvm:vm-${each.value.vmid}-disk-0"
+    #   passthrough = true
+    #   slot = "scsi0"
+    # }
+
+    # disk {
+    #   type = "disk"
+    #   passthrough = false
+    #   storage = "local-lvm"
+    #   slot = "scsi1"
+    #   size = "40G"
+    # }
 
     boot = "order=scsi0"
 
