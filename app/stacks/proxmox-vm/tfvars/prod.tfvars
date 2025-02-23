@@ -16,8 +16,8 @@ proxmox_virtual_machines = {
     }
 
 
-    k8s10 = {
-        name = "vm10000"
+    k8s1 = {
+        name = "node1"
         vmid = 10000
         target_node = "proxmox"
         clone = "vm200"
@@ -31,8 +31,8 @@ proxmox_virtual_machines = {
         ciuser = "<%= ENV['linux_user'] %>"
         cipassword = "<%= ENV['linux_password'] %>"
     }
-    k8s11 = {
-        name = "vm11000"
+    k8s2 = {
+        name = "node2"
         vmid = 11000
         target_node = "proxmox"
         clone = "vm200"
@@ -46,8 +46,8 @@ proxmox_virtual_machines = {
         ciuser = "<%= ENV['linux_user'] %>"
         cipassword = "<%= ENV['linux_password'] %>"
     }
-    k8s12 = {
-        name = "vm12000"
+    k8s3 = {
+        name = "node3"
         vmid = 12000
         target_node = "proxmox"
         clone = "vm200"
@@ -61,19 +61,5 @@ proxmox_virtual_machines = {
         ciuser = "<%= ENV['linux_user'] %>"
         cipassword = "<%= ENV['linux_password'] %>"
     }
-    exo = {
-        name = "vm1000"
-        vmid = 1000
-        target_node = "proxmox"
-        clone = "vm200"
-        memory = 24576
-        balloon = 512
-        sockets = 1
-        cores = 6
-        vcpus = 6
-        onboot = true
-        ipconfig0 = "ip=192.168.31.180/24,gw=192.168.31.1"
-        ciuser = "<%= ENV['linux_user'] %>"
-        cipassword = "<%= ENV['linux_password'] %>"
-    }
+
 }
