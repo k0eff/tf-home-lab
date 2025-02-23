@@ -76,6 +76,10 @@ resource "proxmox_vm_qemu" "proxmox_vm" {
   cipassword = each.value.cipassword
 
 
+  lifecycle {
+    ignore_changes = [ disk, ssh_host, ssh_port, default_ipv4_address ]
+  }
+
 }
 
 terraform {
