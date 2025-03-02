@@ -77,7 +77,7 @@ resource "proxmox_vm_qemu" "proxmox_vm" {
 
 
   lifecycle {
-    ignore_changes = [ disk, ssh_host, ssh_port, default_ipv4_address ]
+    ignore_changes = [ disk, ssh_host, ssh_port, default_ipv4_address, network["mtu"] ]
   }
 
 }
