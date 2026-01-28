@@ -29,6 +29,30 @@ proxmox_virtual_machines = {
         ciuser = "<%= ENV['linux_user'] %>"
         cipassword = "<%= ENV['linux_password'] %>"
     }
+    
+    # RocketChat
+    rocketchat = {
+        name = "vm700"
+        vmid = 700
+        target_node = "proxmox"
+        clone = "vm200"
+        memory = 4096
+        balloon = 512
+        sockets = 1
+        cores = 1
+        vcpus = 1
+        onboot = true
+        ipconfig0 = "ip=192.168.31.152/24,gw=192.168.31.1"
+        ciuser = "<%= ENV['linux_user'] %>"
+        cipassword = "<%= ENV['linux_password'] %>"
+        disks = {
+            extra = {
+             storage = "local-lvm"
+             slot = "scsi1"
+             size = "200G"
+            }
+        }
+    }
 
 
     k8s1 = {
