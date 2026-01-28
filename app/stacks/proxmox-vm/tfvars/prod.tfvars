@@ -9,7 +9,7 @@ proxmox_virtual_machines = {
         sockets = 1
         cores = 1
         vcpus = 1
-        onboot = true
+        onboot = false
         ipconfig0 = "ip=192.168.31.150/24,gw=192.168.31.1"
         ciuser = "<%= ENV['linux_user'] %>"
         cipassword = "<%= ENV['linux_password'] %>"
