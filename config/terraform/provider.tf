@@ -46,3 +46,20 @@ variable "proxmox_api_url" {
   default = null
   sensitive = true
 }
+
+provider "homeassistant" {
+  host_url     = var.homeassistant_url
+  bearer_token = var.homeassistant_token
+}
+
+variable "homeassistant_url" {
+  type      = string
+  default   = null
+  sensitive = true
+}
+
+variable "homeassistant_token" {
+  type      = string
+  default   = null
+  sensitive = true
+}

@@ -6,3 +6,6 @@ vsphere_server    = "<%= ENV['vsphere_server'] %>"
 proxmox_user           = "<%= ENV['proxmox_user'] %>"
 proxmox_pass           = "<%= ENV['proxmox_pass'] %>"
 proxmox_api_url        = "<%= ENV['proxmox_api_url'] %>"
+
+homeassistant_url      = "<%= ENV['HA_URL'] %>"
+homeassistant_token    = "<%= ENV['HA_TOKEN'] %>"

@@ -13,6 +13,11 @@ terraform {
       source  = "Telmate/proxmox"
       version = "3.0.1-rc6"
     }
+
+    homeassistant = {
+      source  = "Fabianoshz/homeassistant"
+      version = "0.2.3"
+    }
   }
 
   backend "local" {
