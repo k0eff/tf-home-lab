@@ -30,7 +30,7 @@ proxmox_virtual_machines = {
         cipassword = "<%= ENV['linux_password'] %>"
     }
     
-    # RocketChat
+    # RocketChat (Upgraded to 8.4.3. Manual DB backup at /var/lib/docker-data/rocketchat-mongo/rocketchat-backup-8.0.1.archive)
     rocketchat = {
         name = "vm700"
         vmid = 700
