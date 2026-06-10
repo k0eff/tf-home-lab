@@ -321,7 +321,7 @@ locals {
 {% set climate_mode = 'winter' if outside is not none and outside <= 8 else 'summer' if outside is not none and outside >= 15 else 'neutral' %}
 {% set source = 'room_sensor' if battery > 10 and room is not none else 'climate_fallback' %}
 {% set effective = room if source == 'room_sensor' else ac_temp %}
-{% set target = 25.5 if climate_mode == 'summer' else 22 if climate_mode == 'winter' else none %}
+{% set target = 24.0 if climate_mode == 'summer' else 22 if climate_mode == 'winter' else none %}
 {% set error = effective - target if effective is not none and target is not none else none %}
 {% set dynamic_setpoint = ([16, [31, ((ac_temp - error) * 2) | round(0) / 2] | min] | max) if ac_temp is not none and error is not none else none %}
 EOT
@@ -331,7 +331,7 @@ EOT
 
 resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_band" {
   alias       = "[TEST] AirCon - LivingR - room sensor comfort band"
-  description = "Test automation for LivingR climate.hol_2. Uses Living tv 1 temperature sensor while its battery is above 10%; falls back to climate current_temperature when the room sensor battery is at or below 10%. Climate mode is based on an outside temperature fallback chain: Venti In 7 with -2C offset when its battery is above 10%, then weather.forecast_home temperature, then sensor.venti_outside_temperature. Winter when outside <= 8C, summer when outside >= 15C, neutral when outside is > 8C and < 15C. Dynamic setpoint = climate_sensor_temperature - (effective_room_temperature - target). Targets are synced with existing LivingR V2 morning modes: summer 25.5C, winter 22C. The climate is switched off after the target is reached or when outside mode becomes neutral/opposite. Uses climate.set_hvac_mode: off because this MELCloud climate entity does not support climate.turn_off."
+  description = "Test automation for LivingR climate.hol_2. Uses Living tv 1 temperature sensor while its battery is above 10%; falls back to climate current_temperature when the room sensor battery is at or below 10%. Climate mode is based on an outside temperature fallback chain: Venti In 7 with -2C offset when its battery is above 10%, then weather.forecast_home temperature, then sensor.venti_outside_temperature. Winter when outside <= 8C, summer when outside >= 15C, neutral when outside is > 8C and < 15C. Dynamic setpoint = climate_sensor_temperature - (effective_room_temperature - target). Summer target is calibrated from Living tv 1 history under the previous LivingR V2 cooling mode: summer 24.0C, winter 22C. The climate is switched off after the target is reached or when outside mode becomes neutral/opposite. Uses climate.set_hvac_mode: off because this MELCloud climate entity does not support climate.turn_off."
   mode        = "single"
 
   trigger = jsonencode([
@@ -402,11 +402,11 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
     {
       choose = [
         {
-          alias = "Summer: cool when room is above 26.0C and outside mode is summer"
+          alias = "Summer: cool when room is above 24.5C and outside mode is summer"
           conditions = [
             {
               condition      = "template"
-              value_template = "${local.livingr_climate_test_setup}\n{{ climate_mode == 'summer' and effective is not none and effective > 26.0 and dynamic_setpoint is not none }}"
+              value_template = "${local.livingr_climate_test_setup}\n{{ climate_mode == 'summer' and effective is not none and effective > 24.5 and dynamic_setpoint is not none }}"
             },
             {
               condition      = "template"
@@ -456,7 +456,7 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
           conditions = [
             {
               condition      = "template"
-              value_template = "${local.livingr_climate_test_setup}\n{{ states('climate.hol_2') == 'cool' and (climate_mode != 'summer' or (effective is not none and effective <= 25.5)) }}"
+              value_template = "${local.livingr_climate_test_setup}\n{{ states('climate.hol_2') == 'cool' and (climate_mode != 'summer' or (effective is not none and effective <= 24.0)) }}"
             }
           ]
           sequence = [
