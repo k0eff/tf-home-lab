@@ -192,3 +192,8 @@ import {
   to = homeassistant_automation.vacuum_when_all_are_away
   id = "1683059266771"
 }
+
+import {
+  to = homeassistant_automation.test_aircon_livingr_room_sensor_comfort_band
+  id = "1770077000010"
+}

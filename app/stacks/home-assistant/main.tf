@@ -295,3 +295,269 @@ resource "homeassistant_automation" "vacuum_when_all_are_away" {
   condition   = "[{\"condition\": \"and\", \"conditions\": [{\"condition\": \"device\", \"device_id\": \"6c73c88c22f0e954d7c9395fbabffdc1\", \"domain\": \"device_tracker\", \"entity_id\": \"device_tracker.fold_4\", \"type\": \"is_not_home\"}, {\"condition\": \"device\", \"device_id\": \"cc4db4786cca0d84a1f75d2f4badf03b\", \"domain\": \"device_tracker\", \"entity_id\": \"device_tracker.xiaomi_12s_ultra\", \"type\": \"is_not_home\"}]}, {\"condition\": \"and\", \"conditions\": []}]"
   action      = "[{\"delay\": {\"hours\": 0, \"minutes\": 15, \"seconds\": 0, \"milliseconds\": 0}}, {\"condition\": \"and\", \"conditions\": [{\"condition\": \"template\", \"value_template\": \"{{ not is_state('sensor.iphone_bssid', '9c:9d:7e:75:21:a1') and not is_state('sensor.iphone_bssid', '9c:9d:7e:75:21:a0') }}\"}, {\"condition\": \"template\", \"value_template\": \"{{ not is_state('sensor.fold_4_wifi_bssid', '9c:9d:7e:75:21:a1') and not is_state('sensor.fold_4_wifi_bssid', '9c:9d:7e:75:21:a0') }}\"}]}, {\"device_id\": \"e298a8b40242a34b564f605dd4bef055\", \"domain\": \"vacuum\", \"entity_id\": \"640b3c68636c87bce9cf9b056fc77a2d\", \"type\": \"clean\"}]"
 }
+
+locals {
+  livingr_climate_test_setup = <<EOT
+{% set room = states('sensor.miaomiaoce_t2_1228_temperature_humidity_sensor') | float(none) %}
+{% set battery = states('sensor.miaomiaoce_t2_1228_battery_level') | float(0) %}
+{% set ac_temp = state_attr('climate.hol_2', 'current_temperature') | float(none) %}
+{% set outside_venti_raw = states('sensor.miaomiaoce_t2_56fa_temperature_humidity_sensor') | float(none) %}
+{% set outside_venti_battery = states('sensor.miaomiaoce_t2_56fa_battery_level') | float(0) %}
+{% set outside_weather = state_attr('weather.forecast_home', 'temperature') | float(none) %}
+{% set outside_venti_device = states('sensor.venti_outside_temperature') | float(none) %}
+{% if outside_venti_battery > 10 and outside_venti_raw is not none %}
+  {% set outside_source = 'venti_in_adjusted' %}
+  {% set outside = outside_venti_raw - 2 %}
+{% elif outside_weather is not none %}
+  {% set outside_source = 'weather_forecast_home' %}
+  {% set outside = outside_weather %}
+{% elif outside_venti_device is not none %}
+  {% set outside_source = 'venti_device_outside' %}
+  {% set outside = outside_venti_device %}
+{% else %}
+  {% set outside_source = 'none' %}
+  {% set outside = none %}
+{% endif %}
+{% set climate_mode = 'winter' if outside is not none and outside <= 8 else 'summer' if outside is not none and outside >= 15 else 'neutral' %}
+{% set source = 'room_sensor' if battery > 10 and room is not none else 'climate_fallback' %}
+{% set effective = room if source == 'room_sensor' else ac_temp %}
+{% set target = 25.5 if climate_mode == 'summer' else 22 if climate_mode == 'winter' else none %}
+{% set error = effective - target if effective is not none and target is not none else none %}
+{% set dynamic_setpoint = ([16, [31, ((ac_temp - error) * 2) | round(0) / 2] | min] | max) if ac_temp is not none and error is not none else none %}
+EOT
+
+  livingr_climate_test_log_suffix = "mode={{ climate_mode }}, outside_source={{ outside_source }}, outside={{ outside }}, venti_raw={{ outside_venti_raw }}, venti_battery={{ outside_venti_battery }}%, weather={{ outside_weather }}, source={{ source }}, room={{ room }}, room_battery={{ battery }}%, ac_sensor={{ ac_temp }}, target={{ target }}, error={{ error | round(2) if error is not none else 'none' }}, setpoint={{ dynamic_setpoint }}"
+}
+
+resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_band" {
+  alias       = "[TEST] AirCon - LivingR - room sensor comfort band"
+  description = "Test automation for LivingR climate.hol_2. Uses Living tv 1 temperature sensor while its battery is above 10%; falls back to climate current_temperature when the room sensor battery is at or below 10%. Climate mode is based on an outside temperature fallback chain: Venti In 7 with -2C offset when its battery is above 10%, then weather.forecast_home temperature, then sensor.venti_outside_temperature. Winter when outside <= 8C, summer when outside >= 15C, neutral when outside is > 8C and < 15C. Dynamic setpoint = climate_sensor_temperature - (effective_room_temperature - target). Targets are synced with existing LivingR V2 morning modes: summer 25.5C, winter 22C. The climate is switched off after the target is reached or when outside mode becomes neutral/opposite. Uses climate.set_hvac_mode: off because this MELCloud climate entity does not support climate.turn_off."
+  mode        = "single"
+
+  trigger = jsonencode([
+    {
+      platform = "time_pattern"
+      minutes  = "/15"
+      id       = "periodic_check"
+    },
+    {
+      platform  = "state"
+      entity_id = "sensor.miaomiaoce_t2_1228_temperature_humidity_sensor"
+      "for" = {
+        minutes = 10
+      }
+      id = "room_temperature_stable_change"
+    },
+    {
+      platform  = "state"
+      entity_id = "sensor.miaomiaoce_t2_1228_battery_level"
+      id        = "room_sensor_battery_changed"
+    },
+    {
+      platform  = "state"
+      entity_id = "sensor.miaomiaoce_t2_56fa_temperature_humidity_sensor"
+      "for" = {
+        minutes = 10
+      }
+      id = "outside_proxy_temperature_stable_change"
+    },
+    {
+      platform  = "state"
+      entity_id = "sensor.miaomiaoce_t2_56fa_battery_level"
+      id        = "outside_proxy_battery_changed"
+    },
+    {
+      platform  = "state"
+      entity_id = "weather.forecast_home"
+      id        = "weather_changed"
+    },
+    {
+      platform  = "state"
+      entity_id = "sensor.venti_outside_temperature"
+      id        = "venti_device_outside_changed"
+    },
+    {
+      platform  = "state"
+      entity_id = "climate.hol_2"
+      id        = "climate_changed"
+    }
+  ])
+
+  condition = jsonencode([
+    {
+      condition      = "template"
+      value_template = "{{ states('climate.hol_2') not in ['unknown', 'unavailable'] }}"
+    },
+    {
+      condition      = "template"
+      value_template = "{{ state_attr('climate.hol_2', 'current_temperature') is not none }}"
+    },
+    {
+      condition      = "template"
+      value_template = "${local.livingr_climate_test_setup}\n{{ outside is not none }}"
+    }
+  ])
+
+  action = jsonencode([
+    {
+      choose = [
+        {
+          alias = "Summer: cool when room is above 26.0C and outside mode is summer"
+          conditions = [
+            {
+              condition      = "template"
+              value_template = "${local.livingr_climate_test_setup}\n{{ climate_mode == 'summer' and effective is not none and effective > 26.0 and dynamic_setpoint is not none }}"
+            },
+            {
+              condition      = "template"
+              value_template = "${local.livingr_climate_test_setup}\n{{ states('climate.hol_2') != 'cool' or (state_attr('climate.hol_2', 'temperature') | float(0)) != (dynamic_setpoint | float) or (state_attr('climate.hol_2', 'fan_mode') or '') != '3' }}"
+            }
+          ]
+          sequence = [
+            {
+              service = "climate.set_hvac_mode"
+              target = {
+                entity_id = "climate.hol_2"
+              }
+              data = {
+                hvac_mode = "cool"
+              }
+            },
+            {
+              service = "climate.set_temperature"
+              target = {
+                entity_id = "climate.hol_2"
+              }
+              data = {
+                temperature = "${local.livingr_climate_test_setup}\n{{ dynamic_setpoint }}"
+              }
+            },
+            {
+              service = "climate.set_fan_mode"
+              target = {
+                entity_id = "climate.hol_2"
+              }
+              data = {
+                fan_mode = "3"
+              }
+            },
+            {
+              service = "logbook.log"
+              data = {
+                name      = "[TEST] LivingR climate comfort band"
+                message   = "${local.livingr_climate_test_setup}\nSummer cooling with outside fallback chain and dynamic climate setpoint; ${local.livingr_climate_test_log_suffix}"
+                entity_id = "climate.hol_2"
+              }
+            }
+          ]
+        },
+        {
+          alias = "Summer: turn off after target is reached or outside mode is no longer summer"
+          conditions = [
+            {
+              condition      = "template"
+              value_template = "${local.livingr_climate_test_setup}\n{{ states('climate.hol_2') == 'cool' and (climate_mode != 'summer' or (effective is not none and effective <= 25.5)) }}"
+            }
+          ]
+          sequence = [
+            {
+              service = "climate.set_hvac_mode"
+              target = {
+                entity_id = "climate.hol_2"
+              }
+              data = {
+                hvac_mode = "off"
+              }
+            },
+            {
+              service = "logbook.log"
+              data = {
+                name      = "[TEST] LivingR climate comfort band"
+                message   = "${local.livingr_climate_test_setup}\nSummer cooling stopped: target reached or outside mode changed; ${local.livingr_climate_test_log_suffix}"
+                entity_id = "climate.hol_2"
+              }
+            }
+          ]
+        },
+        {
+          alias = "Winter: heat when room is below 21.5C and outside mode is winter"
+          conditions = [
+            {
+              condition      = "template"
+              value_template = "${local.livingr_climate_test_setup}\n{{ climate_mode == 'winter' and effective is not none and effective < 21.5 and dynamic_setpoint is not none }}"
+            },
+            {
+              condition      = "template"
+              value_template = "${local.livingr_climate_test_setup}\n{{ states('climate.hol_2') != 'heat' or (state_attr('climate.hol_2', 'temperature') | float(0)) != (dynamic_setpoint | float) or (state_attr('climate.hol_2', 'fan_mode') or '') != '3' }}"
+            }
+          ]
+          sequence = [
+            {
+              service = "climate.set_hvac_mode"
+              target = {
+                entity_id = "climate.hol_2"
+              }
+              data = {
+                hvac_mode = "heat"
+              }
+            },
+            {
+              service = "climate.set_temperature"
+              target = {
+                entity_id = "climate.hol_2"
+              }
+              data = {
+                temperature = "${local.livingr_climate_test_setup}\n{{ dynamic_setpoint }}"
+              }
+            },
+            {
+              service = "climate.set_fan_mode"
+              target = {
+                entity_id = "climate.hol_2"
+              }
+              data = {
+                fan_mode = "3"
+              }
+            },
+            {
+              service = "logbook.log"
+              data = {
+                name      = "[TEST] LivingR climate comfort band"
+                message   = "${local.livingr_climate_test_setup}\nWinter heating with outside fallback chain and dynamic climate setpoint; ${local.livingr_climate_test_log_suffix}"
+                entity_id = "climate.hol_2"
+              }
+            }
+          ]
+        },
+        {
+          alias = "Winter: turn off after target is reached or outside mode is no longer winter"
+          conditions = [
+            {
+              condition      = "template"
+              value_template = "${local.livingr_climate_test_setup}\n{{ states('climate.hol_2') == 'heat' and (climate_mode != 'winter' or (effective is not none and effective >= 22.0)) }}"
+            }
+          ]
+          sequence = [
+            {
+              service = "climate.set_hvac_mode"
+              target = {
+                entity_id = "climate.hol_2"
+              }
+              data = {
+                hvac_mode = "off"
+              }
+            },
+            {
+              service = "logbook.log"
+              data = {
+                name      = "[TEST] LivingR climate comfort band"
+                message   = "${local.livingr_climate_test_setup}\nWinter heating stopped: target reached or outside mode changed; ${local.livingr_climate_test_log_suffix}"
+                entity_id = "climate.hol_2"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ])
+}
