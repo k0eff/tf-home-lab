@@ -325,7 +325,7 @@ locals {
 {% set error = effective - target if effective is not none and target is not none else none %}
 {% set dynamic_setpoint = ([16, [31, ((ac_temp - error) * 2) | round(0) / 2] | min] | max) if ac_temp is not none and error is not none else none %}
 {% set minutes_now = now().hour * 60 + now().minute %}
-{% set night_window = minutes_now >= 30 and minutes_now < 510 %}
+{% set night_window = minutes_now >= 180 and minutes_now < 360 %}
 {% set day_air_clean_window = now().hour >= 8 and now().hour <= 23 %}
 EOT
 
@@ -334,7 +334,7 @@ EOT
 
 resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_band" {
   alias       = "[TEST] AirCon - LivingR - room sensor comfort band"
-  description = "Test automation for LivingR climate.hol_2. Uses Living tv 1 temperature sensor while its battery is above 10%; falls back to climate current_temperature when the room sensor battery is at or below 10%. Climate mode is based on an outside temperature fallback chain: Venti In 7 with -2C offset when its battery is above 10%, then weather.forecast_home temperature, then sensor.venti_outside_temperature. Winter when outside <= 8C, summer when outside >= 15C, neutral when outside is > 8C and < 15C. Dynamic setpoint = climate_sensor_temperature - (effective_room_temperature - target). Summer target is calibrated from Living tv 1 history under the previous LivingR V2 cooling mode: summer 24.0C, winter 22C. Night window 00:30-08:30 uses fan_only + fan 5 for summer air cleaning and blocks comfort cooling/heating. During daytime, no LivingR motion for 15m raises fan to 5 while the climate is already running; motion restores fan 3. Uses climate.set_hvac_mode: off because this MELCloud climate entity does not support climate.turn_off."
+  description = "Test automation for LivingR climate.hol_2. Uses Living tv 1 temperature sensor while its battery is above 10%; falls back to climate current_temperature when the room sensor battery is at or below 10%. Climate mode is based on an outside temperature fallback chain: Venti In 7 with -2C offset when its battery is above 10%, then weather.forecast_home temperature, then sensor.venti_outside_temperature. Winter when outside <= 8C, summer when outside >= 15C, neutral when outside is > 8C and < 15C. Dynamic setpoint = climate_sensor_temperature - (effective_room_temperature - target). Summer target is calibrated from Living tv 1 history under the previous LivingR V2 cooling mode: summer 24.0C, winter 22C. Night air-clean window 03:00-06:00 uses fan_only + fan 5 in both seasons and blocks comfort cooling/heating. During daytime, no LivingR motion for 15m raises fan to 5 while the climate is already running; motion restores fan 3. Uses climate.set_hvac_mode: off because this MELCloud climate entity does not support climate.turn_off."
   mode        = "single"
 
   trigger = jsonencode([
@@ -432,11 +432,11 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
     {
       choose = [
         {
-          alias = "Night: summer air cleaning fan only at max speed"
+          alias = "Night: air cleaning fan only at max speed"
           conditions = [
             {
               condition      = "template"
-              value_template = "${local.livingr_climate_test_setup}\n{{ climate_mode == 'summer' and night_window and (states('climate.hol_2') != 'fan_only' or (state_attr('climate.hol_2', 'fan_mode') or '') != '5') }}"
+              value_template = "${local.livingr_climate_test_setup}\n{{ night_window and (states('climate.hol_2') != 'fan_only' or (state_attr('climate.hol_2', 'fan_mode') or '') != '5') }}"
             }
           ]
           sequence = [
@@ -471,7 +471,7 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
               service = "logbook.log"
               data = {
                 name      = "[TEST] LivingR climate comfort band"
-                message   = "${local.livingr_climate_test_setup}\nNight summer air cleaning: fan_only fan 5; ${local.livingr_climate_test_log_suffix}"
+                message   = "${local.livingr_climate_test_setup}\nNight air cleaning: fan_only fan 5; ${local.livingr_climate_test_log_suffix}"
                 entity_id = "climate.hol_2"
               }
             }
