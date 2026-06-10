@@ -345,12 +345,12 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
     },
     {
       platform = "time"
-      at       = "00:30:00"
+      at       = "03:00:00"
       id       = "night_air_clean_start"
     },
     {
       platform = "time"
-      at       = "08:30:00"
+      at       = "06:00:00"
       id       = "night_air_clean_end"
     },
     {
@@ -405,11 +405,6 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
       from      = "off"
       to        = "on"
       id        = "livingr_motion"
-    },
-    {
-      platform  = "state"
-      entity_id = "climate.hol_2"
-      id        = "climate_changed"
     }
   ])
 
@@ -542,7 +537,7 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
             },
             {
               condition      = "template"
-              value_template = "${local.livingr_climate_test_setup}\n{{ states('climate.hol_2') != 'cool' or (state_attr('climate.hol_2', 'temperature') | float(0)) != (dynamic_setpoint | float) or (state_attr('climate.hol_2', 'fan_mode') or '') != '3' }}"
+              value_template = "${local.livingr_climate_test_setup}\n{{ states('climate.hol_2') != 'cool' or (state_attr('climate.hol_2', 'temperature') | float(0)) != (dynamic_setpoint | float) }}"
             }
           ]
           sequence = [
@@ -620,7 +615,7 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
             },
             {
               condition      = "template"
-              value_template = "${local.livingr_climate_test_setup}\n{{ states('climate.hol_2') != 'heat' or (state_attr('climate.hol_2', 'temperature') | float(0)) != (dynamic_setpoint | float) or (state_attr('climate.hol_2', 'fan_mode') or '') != '3' }}"
+              value_template = "${local.livingr_climate_test_setup}\n{{ states('climate.hol_2') != 'heat' or (state_attr('climate.hol_2', 'temperature') | float(0)) != (dynamic_setpoint | float) }}"
             }
           ]
           sequence = [
