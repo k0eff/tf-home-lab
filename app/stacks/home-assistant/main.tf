@@ -321,7 +321,7 @@ locals {
 {% set climate_mode = 'winter' if outside is not none and outside <= 8 else 'summer' if outside is not none and outside >= 15 else 'neutral' %}
 {% set source = 'room_sensor' if battery > 10 and room is not none else 'climate_fallback' %}
 {% set effective = room if source == 'room_sensor' else ac_temp %}
-{% set target = 24.0 if climate_mode == 'summer' else 22 if climate_mode == 'winter' else none %}
+{% set target = 24.4 if climate_mode == 'summer' and outside is not none and outside < 28 else 24.0 if climate_mode == 'summer' else 22 if climate_mode == 'winter' else none %}
 {% set error = effective - target if effective is not none and target is not none else none %}
 {% set dynamic_setpoint = ([16, [31, ((ac_temp - error) * 2) | round(0) / 2] | min] | max) if ac_temp is not none and error is not none else none %}
 {% set minutes_now = now().hour * 60 + now().minute %}
@@ -334,13 +334,13 @@ EOT
 
 resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_band" {
   alias       = "[TEST] AirCon - LivingR - room sensor comfort band"
-  description = "Test automation for LivingR climate.hol_2. Uses Living tv 1 temperature sensor while its battery is above 10%; falls back to climate current_temperature when the room sensor battery is at or below 10%. Climate mode is based on an outside temperature fallback chain: Venti In 7 with -2C offset when its battery is above 10%, then weather.forecast_home temperature, then sensor.venti_outside_temperature. Winter when outside <= 8C, summer when outside >= 15C, neutral when outside is > 8C and < 15C. Dynamic setpoint = climate_sensor_temperature - (effective_room_temperature - target). Summer target is calibrated from Living tv 1 history under the previous LivingR V2 cooling mode: summer 24.0C, winter 22C. Night air-clean window 03:00-06:00 uses fan_only + fan 5 in both seasons and blocks comfort cooling/heating. During daytime, no LivingR motion for 15m raises fan to 5 while the climate is already running; motion restores fan 3. Uses climate.set_hvac_mode: off because this MELCloud climate entity does not support climate.turn_off."
+  description = "Test automation for LivingR climate.hol_2. Uses Living tv 1 temperature sensor while its battery is above 10%; falls back to climate current_temperature when the room sensor battery is at or below 10%. Climate mode is based on an outside temperature fallback chain: Venti In 7 with -2C offset when its battery is above 10%, then weather.forecast_home temperature, then sensor.venti_outside_temperature. Winter when outside <= 8C, summer when outside >= 15C, neutral when outside is > 8C and < 15C. Dynamic setpoint = climate_sensor_temperature - (effective_room_temperature - target). Summer target is 24.4C on mild summer days below 28C outside, otherwise 24.0C; winter target is 22C. Summer cooling starts above target + 0.2C and stops at target to reduce room-temperature amplitude and long off periods. Night air-clean window 03:00-06:00 uses fan_only + fan 5 in both seasons and blocks comfort cooling/heating. During daytime, no LivingR motion for 15m raises fan to 5 only while the climate is already in fan_only; motion restores fan 3 in fan_only. Uses climate.set_hvac_mode: off because this MELCloud climate entity does not support climate.turn_off."
   mode        = "single"
 
   trigger = jsonencode([
     {
       platform = "time_pattern"
-      minutes  = "/15"
+      minutes  = "/5"
       id       = "periodic_check"
     },
     {
@@ -357,7 +357,7 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
       platform  = "state"
       entity_id = "sensor.miaomiaoce_t2_1228_temperature_humidity_sensor"
       "for" = {
-        minutes = 10
+        minutes = 3
       }
       id = "room_temperature_stable_change"
     },
@@ -477,7 +477,7 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
           conditions = [
             {
               condition      = "template"
-              value_template = "${local.livingr_climate_test_setup}\n{{ not night_window and day_air_clean_window and is_state('binary_sensor.motion01', 'off') and states('climate.hol_2') in ['cool', 'heat', 'fan_only'] and (state_attr('climate.hol_2', 'fan_mode') or '') != '5' }}"
+              value_template = "${local.livingr_climate_test_setup}\n{{ not night_window and day_air_clean_window and is_state('binary_sensor.motion01', 'off') and states('climate.hol_2') == 'fan_only' and (state_attr('climate.hol_2', 'fan_mode') or '') != '5' }}"
             }
           ]
           sequence = [
@@ -505,7 +505,7 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
           conditions = [
             {
               condition      = "template"
-              value_template = "${local.livingr_climate_test_setup}\n{{ not night_window and day_air_clean_window and is_state('binary_sensor.motion01', 'on') and states('climate.hol_2') in ['cool', 'heat', 'fan_only'] and (state_attr('climate.hol_2', 'fan_mode') or '') != '3' }}"
+              value_template = "${local.livingr_climate_test_setup}\n{{ not night_window and day_air_clean_window and is_state('binary_sensor.motion01', 'on') and states('climate.hol_2') == 'fan_only' and (state_attr('climate.hol_2', 'fan_mode') or '') != '3' }}"
             }
           ]
           sequence = [
@@ -529,11 +529,11 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
           ]
         },
         {
-          alias = "Summer: cool when room is above 24.5C and outside mode is summer"
+          alias = "Summer: cool when room is above target comfort band and outside mode is summer"
           conditions = [
             {
               condition      = "template"
-              value_template = "${local.livingr_climate_test_setup}\n{{ not night_window and climate_mode == 'summer' and effective is not none and effective > 24.5 and dynamic_setpoint is not none }}"
+              value_template = "${local.livingr_climate_test_setup}\n{{ not night_window and climate_mode == 'summer' and effective is not none and target is not none and effective > target + 0.2 and dynamic_setpoint is not none }}"
             },
             {
               condition      = "template"
@@ -565,14 +565,14 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
                 entity_id = "climate.hol_2"
               }
               data = {
-                fan_mode = "3"
+                fan_mode = "2"
               }
             },
             {
               service = "logbook.log"
               data = {
                 name      = "[TEST] LivingR climate comfort band"
-                message   = "${local.livingr_climate_test_setup}\nSummer cooling with outside fallback chain and dynamic climate setpoint; ${local.livingr_climate_test_log_suffix}"
+                message   = "${local.livingr_climate_test_setup}\nSummer cooling with mild-day target, narrower comfort band and dynamic climate setpoint; ${local.livingr_climate_test_log_suffix}"
                 entity_id = "climate.hol_2"
               }
             }
@@ -583,7 +583,7 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
           conditions = [
             {
               condition      = "template"
-              value_template = "${local.livingr_climate_test_setup}\n{{ states('climate.hol_2') == 'cool' and (climate_mode != 'summer' or (effective is not none and effective <= 24.0)) }}"
+              value_template = "${local.livingr_climate_test_setup}\n{{ states('climate.hol_2') == 'cool' and (climate_mode != 'summer' or (effective is not none and target is not none and effective <= target)) }}"
             }
           ]
           sequence = [
