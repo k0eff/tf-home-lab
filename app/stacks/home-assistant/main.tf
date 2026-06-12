@@ -321,7 +321,7 @@ locals {
 {% set climate_mode = 'winter' if outside is not none and outside <= 8 else 'summer' if outside is not none and outside >= 15 else 'neutral' %}
 {% set source = 'room_sensor' if battery > 10 and room is not none else 'climate_fallback' %}
 {% set effective = room if source == 'room_sensor' else ac_temp %}
-{% set target = 24.2 if climate_mode == 'summer' and outside is not none and outside < 28 else 24.0 if climate_mode == 'summer' else 22 if climate_mode == 'winter' else none %}
+{% set target = 23.9 if climate_mode == 'summer' and outside is not none and outside < 28 else 24.0 if climate_mode == 'summer' else 22 if climate_mode == 'winter' else none %}
 {% set learned_overshoot = [0, [1, states('input_number.livingr_cooling_overshoot') | float(0.2)] | min] | max %}
 {% set cooling_stop_room_temp = states('input_number.livingr_cooling_stop_room_temp') | float(0) %}
 {% set error = effective - target if effective is not none and target is not none else none %}
@@ -338,7 +338,7 @@ EOT
 
 resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_band" {
   alias       = "[TEST] AirCon - LivingR - room sensor comfort band"
-  description = "Test automation for LivingR climate.hol_2. Uses Living tv 1 temperature sensor while its battery is above 10%; falls back to climate current_temperature when the room sensor battery is at or below 10%. Climate mode is based on an outside temperature fallback chain: Venti In 7 with -2C offset when its battery is above 10%, then weather.forecast_home temperature, then sensor.venti_outside_temperature. Winter when outside <= 8C, summer when outside >= 15C, neutral when outside is > 8C and < 15C. Dynamic setpoint = climate_sensor_temperature - (effective_room_temperature - target). Summer target is 24.2C on mild summer days below 28C outside, otherwise 24.0C; winter target is 22C. Summer cooling starts above target + 0.2C and moves to fan_only + fan 2 at target + learned overshoot for a 7 minute coil cool-down/dry-out period before turning off. The learned overshoot is stored in input_number.livingr_cooling_overshoot and updated from each cool-down cycle using 70/30 smoothing. Night sleep window 00:30-08:30 blocks comfort cooling/heating and keeps the climate off, except the 03:00-06:00 air-clean window which uses fan_only + fan 5 in both seasons. During daytime, no LivingR motion for 15m raises fan to 5 only while the climate is already in fan_only; motion restores fan 3 in fan_only. Uses climate.set_hvac_mode: off because this MELCloud climate entity does not support climate.turn_off."
+  description = "Test automation for LivingR climate.hol_2. Uses Living tv 1 temperature sensor while its battery is above 10%; falls back to climate current_temperature when the room sensor battery is at or below 10%. Climate mode is based on an outside temperature fallback chain: Venti In 7 with -2C offset when its battery is above 10%, then weather.forecast_home temperature, then sensor.venti_outside_temperature. Winter when outside <= 8C, summer when outside >= 15C, neutral when outside is > 8C and < 15C. Dynamic setpoint = climate_sensor_temperature - (effective_room_temperature - target). Summer target is 23.9C on mild summer days below 28C outside, otherwise 24.0C; winter target is 22C. Mild summer is tuned as a 23.9-24.3C comfort band: cooling starts above target + 0.4C and moves to fan_only + fan 2 at target + learned overshoot for a 7 minute coil cool-down/dry-out period before turning off. The learned overshoot is stored in input_number.livingr_cooling_overshoot and updated from each cool-down cycle using 70/30 smoothing. Night sleep window 00:30-08:30 blocks comfort cooling/heating and keeps the climate off, except the 03:00-06:00 air-clean window which uses fan_only + fan 5 in both seasons. During daytime, no LivingR motion for 15m raises fan to 5 only while the climate is already in fan_only; motion restores fan 3 in fan_only. Uses climate.set_hvac_mode: off because this MELCloud climate entity does not support climate.turn_off."
   mode        = "single"
 
   trigger = jsonencode([
@@ -575,7 +575,7 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
           conditions = [
             {
               condition      = "template"
-              value_template = "${local.livingr_climate_test_setup}\n{{ not night_sleep_window and climate_mode == 'summer' and effective is not none and target is not none and effective > target + 0.2 and dynamic_setpoint is not none }}"
+              value_template = "${local.livingr_climate_test_setup}\n{{ not night_sleep_window and climate_mode == 'summer' and effective is not none and target is not none and effective > target + 0.4 and dynamic_setpoint is not none }}"
             },
             {
               condition      = "template"
