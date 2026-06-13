@@ -197,3 +197,8 @@ import {
   to = homeassistant_automation.test_aircon_livingr_room_sensor_comfort_band
   id = "1770077000010"
 }
+
+import {
+  to = homeassistant_automation.test_aircon_bedroomb_room_sensor_comfort_band
+  id = "1770077000021"
+}

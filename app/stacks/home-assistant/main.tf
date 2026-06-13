@@ -6,7 +6,6 @@ resource "homeassistant_automation" "aircon_bedroomb_flap_door_sensor" {
   condition   = "[{\"condition\": \"state\", \"entity_id\": \"binary_sensor.isa_dw2hl_af8f_magnet_sensor\", \"state\": \"on\"}]"
   action      = "[{\"if\": [{\"condition\": \"state\", \"entity_id\": \"climate.v357_spalniag\", \"attribute\": \"swing_mode\", \"state\": \"4\"}], \"then\": [{\"service\": \"climate.set_swing_mode\", \"data\": {\"swing_mode\": \"5_down\"}, \"target\": {\"entity_id\": \"climate.v357_spalniag\"}}], \"else\": [{\"service\": \"climate.set_swing_mode\", \"data\": {\"swing_mode\": \"4\"}, \"target\": {\"entity_id\": \"climate.v357_spalniag\"}}]}]"
 }
-
 resource "homeassistant_automation" "aircon_bedrooms_fan_high_no_motion" {
   alias       = "Aircon - BedroomS - fan HIGH - no motion"
   mode        = "single"
@@ -799,6 +798,545 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
                 name      = "[TEST] LivingR climate comfort band"
                 message   = "${local.livingr_climate_test_setup}\nWinter heating stopped: target reached or outside mode changed; ${local.livingr_climate_test_log_suffix}"
                 entity_id = "climate.hol_2"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ])
+}
+
+locals {
+  bedroomb_climate_test_setup = <<EOT
+{% set primary_room = states('sensor.miaomiaoce_t2_5249_temperature_humidity_sensor') | float(none) %}
+{% set primary_battery = states('sensor.miaomiaoce_t2_5249_battery_level') | float(0) %}
+{% set secondary_room = states('sensor.miaomiaoce_t2_faea_temperature_humidity_sensor') | float(none) %}
+{% set secondary_battery = states('sensor.miaomiaoce_t2_faea_battery_level') | float(0) %}
+{% set ac_temp = state_attr('climate.v357_spalniag_2', 'current_temperature') | float(none) %}
+{% set outside_venti_raw = states('sensor.miaomiaoce_t2_56fa_temperature_humidity_sensor') | float(none) %}
+{% set outside_venti_battery = states('sensor.miaomiaoce_t2_56fa_battery_level') | float(0) %}
+{% set outside_weather = state_attr('weather.forecast_home', 'temperature') | float(none) %}
+{% set outside_venti_device = states('sensor.venti_outside_temperature') | float(none) %}
+{% set room_sensor_min_battery = states('input_number.bedroomb_room_sensor_min_battery') | float(10) %}
+{% set outside_sensor_min_battery = states('input_number.bedroomb_outside_sensor_min_battery') | float(10) %}
+{% set outside_venti_offset = states('input_number.bedroomb_venti_in_offset') | float(2) %}
+{% set winter_outside_threshold = states('input_number.bedroomb_winter_outside_threshold') | float(8) %}
+{% set summer_outside_threshold = states('input_number.bedroomb_summer_outside_threshold') | float(15) %}
+{% set mild_outside_threshold = states('input_number.bedroomb_mild_outside_threshold') | float(28) %}
+{% set mild_summer_target = states('input_number.bedroomb_target_temperature') | float(23.5) %}
+{% set hot_summer_target = states('input_number.bedroomb_hot_summer_target') | float(23.8) %}
+{% set winter_target = states('input_number.bedroomb_winter_target') | float(22) %}
+{% set cooling_start_delta = states('input_number.bedroomb_cooling_start_delta') | float(0.4) %}
+{% set winter_start_delta = states('input_number.bedroomb_winter_start_delta') | float(0.5) %}
+{% set coil_cooldown_minutes = states('input_number.bedroomb_coil_cooldown_minutes') | float(7) %}
+{% set cooling_fan_mode = states('input_number.bedroomb_cooling_fan_mode') | int(2) %}
+{% if outside_venti_battery > outside_sensor_min_battery and outside_venti_raw is not none %}
+  {% set outside_source = 'venti_in_adjusted' %}
+  {% set outside = outside_venti_raw - outside_venti_offset %}
+{% elif outside_weather is not none %}
+  {% set outside_source = 'weather_forecast_home' %}
+  {% set outside = outside_weather %}
+{% elif outside_venti_device is not none %}
+  {% set outside_source = 'venti_device_outside' %}
+  {% set outside = outside_venti_device %}
+{% else %}
+  {% set outside_source = 'none' %}
+  {% set outside = none %}
+{% endif %}
+{% set climate_mode = 'winter' if outside is not none and outside <= winter_outside_threshold else 'summer' if outside is not none and outside >= summer_outside_threshold else 'neutral' %}
+{% if primary_battery > room_sensor_min_battery and primary_room is not none %}
+  {% set source = 'primary_room_sensor' %}
+  {% set room = primary_room %}
+  {% set battery = primary_battery %}
+{% elif secondary_battery > room_sensor_min_battery and secondary_room is not none %}
+  {% set source = 'ceiling_room_sensor' %}
+  {% set room = secondary_room %}
+  {% set battery = secondary_battery %}
+{% else %}
+  {% set source = 'climate_fallback' %}
+  {% set room = none %}
+  {% set battery = primary_battery %}
+{% endif %}
+{% set effective = room if source in ['primary_room_sensor', 'ceiling_room_sensor'] else ac_temp %}
+{% set target = mild_summer_target if climate_mode == 'summer' and outside is not none and outside < mild_outside_threshold else hot_summer_target if climate_mode == 'summer' else winter_target if climate_mode == 'winter' else none %}
+{% set learned_overshoot = [0, [1, states('input_number.bedroomb_cooling_overshoot') | float(0.2)] | min] | max %}
+{% set cooling_stop_room_temp = states('input_number.bedroomb_cooling_stop_room_temp') | float(0) %}
+{% set error = effective - target if effective is not none and target is not none else none %}
+{% set dynamic_setpoint = ([16, [31, ((ac_temp - error) * 2) | round(0) / 2] | min] | max) if ac_temp is not none and error is not none else none %}
+{% set minutes_now = now().hour * 60 + now().minute %}
+{% set night_sleep_window = minutes_now >= 30 and minutes_now < 510 %}
+{% set night_air_clean_window = minutes_now >= 180 and minutes_now < 360 %}
+{% set night_window = night_air_clean_window %}
+{% set day_air_clean_window = now().hour >= 8 and now().hour <= 23 %}
+EOT
+
+  bedroomb_climate_test_log_suffix = "mode={{ climate_mode }}, night_sleep={{ night_sleep_window }}, night_air_clean={{ night_air_clean_window }}, outside_source={{ outside_source }}, outside={{ outside }}, venti_raw={{ outside_venti_raw }}, venti_battery={{ outside_venti_battery }}%, weather={{ outside_weather }}, source={{ source }}, primary_room={{ primary_room }}, primary_battery={{ primary_battery }}%, ceiling_room={{ secondary_room }}, ceiling_battery={{ secondary_battery }}%, source_room={{ room }}, source_battery={{ battery }}%, ac_sensor={{ ac_temp }}, target={{ target }}, start_delta={{ cooling_start_delta }}, learned_overshoot={{ learned_overshoot }}, stop_room={{ cooling_stop_room_temp }}, fan={{ cooling_fan_mode }}, cooldown={{ coil_cooldown_minutes }}m, error={{ error | round(2) if error is not none else 'none' }}, setpoint={{ dynamic_setpoint }}"
+}
+
+resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_band" {
+  alias       = "[TEST] AirCon - BedroomB - room sensor comfort band"
+  description = "Test automation for BedroomB climate.v357_spalniag_2. Uses BdrmB 11 as the primary room temperature sensor while its battery is above the configurable room-sensor battery helper; falls back to BedroomB ceil 2 if healthy, then to climate current_temperature. Climate mode is based on configurable outside thresholds and an outside temperature fallback chain: Venti In 7 minus the configurable offset, then weather.forecast_home temperature, then sensor.venti_outside_temperature. Dynamic setpoint = climate_sensor_temperature - (effective_room_temperature - target). The main comfort target, start delta, hot-summer target, outdoor thresholds, winter target, fan mode, coil cool-down minutes, learned overshoot, Venti offset, and sensor battery thresholds are all exposed through BedroomB tuning input_number helpers. Mild summer is tuned as a configurable comfort band: cooling starts above target + start delta and moves to fan_only at target + learned overshoot. The learned overshoot is updated from each cool-down cycle using 70/30 smoothing. Night sleep window 00:30-08:30 blocks comfort cooling/heating and keeps the climate off, except the 03:00-06:00 air-clean window which uses fan_only + fan 5 in both seasons. During daytime, no BedroomB motion for 15m raises fan to 5 only while the climate is already in fan_only; motion restores fan 3 in fan_only. Uses climate.set_hvac_mode: off because this MELCloud climate entity does not support climate.turn_off."
+  mode        = "single"
+
+  trigger = jsonencode([
+    {
+      platform = "time_pattern"
+      minutes  = "/5"
+      id       = "periodic_check"
+    },
+    {
+      platform = "time"
+      at       = "00:30:00"
+      id       = "night_sleep_start"
+    },
+    {
+      platform = "time"
+      at       = "03:00:00"
+      id       = "night_air_clean_start"
+    },
+    {
+      platform = "time"
+      at       = "06:00:00"
+      id       = "night_air_clean_end"
+    },
+    {
+      platform = "time"
+      at       = "08:30:00"
+      id       = "night_sleep_end"
+    },
+    {
+      platform  = "state"
+      entity_id = "sensor.miaomiaoce_t2_5249_temperature_humidity_sensor"
+      "for" = {
+        minutes = 3
+      }
+      id = "primary_room_temperature_stable_change"
+    },
+    {
+      platform  = "state"
+      entity_id = "sensor.miaomiaoce_t2_5249_battery_level"
+      id        = "primary_room_sensor_battery_changed"
+    },
+    {
+      platform  = "state"
+      entity_id = "sensor.miaomiaoce_t2_faea_temperature_humidity_sensor"
+      "for" = {
+        minutes = 3
+      }
+      id = "ceiling_room_temperature_stable_change"
+    },
+    {
+      platform  = "state"
+      entity_id = "sensor.miaomiaoce_t2_faea_battery_level"
+      id        = "ceiling_room_sensor_battery_changed"
+    },
+    {
+      platform  = "state"
+      entity_id = "sensor.miaomiaoce_t2_56fa_temperature_humidity_sensor"
+      "for" = {
+        minutes = 10
+      }
+      id = "outside_proxy_temperature_stable_change"
+    },
+    {
+      platform  = "state"
+      entity_id = "sensor.miaomiaoce_t2_56fa_battery_level"
+      id        = "outside_proxy_battery_changed"
+    },
+    {
+      platform  = "state"
+      entity_id = "weather.forecast_home"
+      id        = "weather_changed"
+    },
+    {
+      platform  = "state"
+      entity_id = "sensor.venti_outside_temperature"
+      id        = "venti_device_outside_changed"
+    },
+    {
+      platform  = "state"
+      entity_id = "binary_sensor.motion03"
+      from      = "on"
+      to        = "off"
+      "for" = {
+        minutes = 15
+      }
+      id = "bedroomb_no_motion_15m"
+    },
+    {
+      platform  = "state"
+      entity_id = "binary_sensor.motion03"
+      from      = "off"
+      to        = "on"
+      id        = "bedroomb_motion"
+    }
+  ])
+
+  condition = jsonencode([
+    {
+      condition      = "template"
+      value_template = "{{ states('climate.v357_spalniag_2') not in ['unknown', 'unavailable'] }}"
+    },
+    {
+      condition      = "template"
+      value_template = "{{ state_attr('climate.v357_spalniag_2', 'current_temperature') is not none }}"
+    },
+    {
+      condition      = "template"
+      value_template = "${local.bedroomb_climate_test_setup}\n{{ outside is not none }}"
+    }
+  ])
+
+  action = jsonencode([
+    {
+      choose = [
+        {
+          alias = "Night: air cleaning fan only at max speed"
+          conditions = [
+            {
+              condition      = "template"
+              value_template = "${local.bedroomb_climate_test_setup}\n{{ night_air_clean_window and (states('climate.v357_spalniag_2') != 'fan_only' or (state_attr('climate.v357_spalniag_2', 'fan_mode') or '') != '5') }}"
+            }
+          ]
+          sequence = [
+            {
+              service = "climate.set_hvac_mode"
+              target = {
+                entity_id = "climate.v357_spalniag_2"
+              }
+              data = {
+                hvac_mode = "fan_only"
+              }
+            },
+            {
+              service = "climate.set_temperature"
+              target = {
+                entity_id = "climate.v357_spalniag_2"
+              }
+              data = {
+                temperature = 30
+              }
+            },
+            {
+              service = "climate.set_fan_mode"
+              target = {
+                entity_id = "climate.v357_spalniag_2"
+              }
+              data = {
+                fan_mode = "5"
+              }
+            },
+            {
+              service = "logbook.log"
+              data = {
+                name      = "[TEST] BedroomB climate comfort band"
+                message   = "${local.bedroomb_climate_test_setup}\nNight air cleaning: fan_only fan 5; ${local.bedroomb_climate_test_log_suffix}"
+                entity_id = "climate.v357_spalniag_2"
+              }
+            }
+          ]
+        },
+        {
+          alias = "Night: sleep keeps climate off outside air-clean window"
+          conditions = [
+            {
+              condition      = "template"
+              value_template = "${local.bedroomb_climate_test_setup}\n{{ night_sleep_window and not night_air_clean_window and states('climate.v357_spalniag_2') != 'off' }}"
+            }
+          ]
+          sequence = [
+            {
+              service = "climate.set_hvac_mode"
+              target = {
+                entity_id = "climate.v357_spalniag_2"
+              }
+              data = {
+                hvac_mode = "off"
+              }
+            },
+            {
+              service = "logbook.log"
+              data = {
+                name      = "[TEST] BedroomB climate comfort band"
+                message   = "${local.bedroomb_climate_test_setup}\nNight sleep: climate off outside 03:00-06:00 air-clean window; ${local.bedroomb_climate_test_log_suffix}"
+                entity_id = "climate.v357_spalniag_2"
+              }
+            }
+          ]
+        },
+        {
+          alias = "Daytime no motion: raise fan while climate is already running"
+          conditions = [
+            {
+              condition      = "template"
+              value_template = "${local.bedroomb_climate_test_setup}\n{{ not night_sleep_window and day_air_clean_window and is_state('binary_sensor.motion03', 'off') and states('climate.v357_spalniag_2') == 'fan_only' and (state_attr('climate.v357_spalniag_2', 'fan_mode') or '') not in ['2', '5'] }}"
+            }
+          ]
+          sequence = [
+            {
+              service = "climate.set_fan_mode"
+              target = {
+                entity_id = "climate.v357_spalniag_2"
+              }
+              data = {
+                fan_mode = "5"
+              }
+            },
+            {
+              service = "logbook.log"
+              data = {
+                name      = "[TEST] BedroomB climate comfort band"
+                message   = "${local.bedroomb_climate_test_setup}\nDaytime no motion: fan 5 air cleaning while climate already running; ${local.bedroomb_climate_test_log_suffix}"
+                entity_id = "climate.v357_spalniag_2"
+              }
+            }
+          ]
+        },
+        {
+          alias = "Daytime motion: restore fan 3 while climate is already running"
+          conditions = [
+            {
+              condition      = "template"
+              value_template = "${local.bedroomb_climate_test_setup}\n{{ not night_sleep_window and day_air_clean_window and is_state('binary_sensor.motion03', 'on') and states('climate.v357_spalniag_2') == 'fan_only' and (state_attr('climate.v357_spalniag_2', 'fan_mode') or '') not in ['2', '3'] }}"
+            }
+          ]
+          sequence = [
+            {
+              service = "climate.set_fan_mode"
+              target = {
+                entity_id = "climate.v357_spalniag_2"
+              }
+              data = {
+                fan_mode = "3"
+              }
+            },
+            {
+              service = "logbook.log"
+              data = {
+                name      = "[TEST] BedroomB climate comfort band"
+                message   = "${local.bedroomb_climate_test_setup}\nDaytime motion: restoring fan 3 while climate already running; ${local.bedroomb_climate_test_log_suffix}"
+                entity_id = "climate.v357_spalniag_2"
+              }
+            }
+          ]
+        },
+        {
+          alias = "Summer: cool when room is above target comfort band and outside mode is summer"
+          conditions = [
+            {
+              condition      = "template"
+              value_template = "${local.bedroomb_climate_test_setup}\n{{ not night_sleep_window and climate_mode == 'summer' and effective is not none and target is not none and effective > target + cooling_start_delta and dynamic_setpoint is not none }}"
+            },
+            {
+              condition      = "template"
+              value_template = "${local.bedroomb_climate_test_setup}\n{{ states('climate.v357_spalniag_2') != 'cool' or (state_attr('climate.v357_spalniag_2', 'temperature') | float(0)) != (dynamic_setpoint | float) }}"
+            }
+          ]
+          sequence = [
+            {
+              service = "climate.set_hvac_mode"
+              target = {
+                entity_id = "climate.v357_spalniag_2"
+              }
+              data = {
+                hvac_mode = "cool"
+              }
+            },
+            {
+              service = "climate.set_temperature"
+              target = {
+                entity_id = "climate.v357_spalniag_2"
+              }
+              data = {
+                temperature = "${local.bedroomb_climate_test_setup}\n{{ dynamic_setpoint }}"
+              }
+            },
+            {
+              service = "climate.set_fan_mode"
+              target = {
+                entity_id = "climate.v357_spalniag_2"
+              }
+              data = {
+                fan_mode = "${local.bedroomb_climate_test_setup}\n{{ cooling_fan_mode }}"
+              }
+            },
+            {
+              service = "logbook.log"
+              data = {
+                name      = "[TEST] BedroomB climate comfort band"
+                message   = "${local.bedroomb_climate_test_setup}\nSummer cooling with mild-day target, narrower comfort band and dynamic climate setpoint; ${local.bedroomb_climate_test_log_suffix}"
+                entity_id = "climate.v357_spalniag_2"
+              }
+            }
+          ]
+        },
+        {
+          alias = "Summer: coil cool-down after target is reached or outside mode is no longer summer"
+          conditions = [
+            {
+              condition      = "template"
+              value_template = "${local.bedroomb_climate_test_setup}\n{{ states('climate.v357_spalniag_2') == 'cool' and (climate_mode != 'summer' or (effective is not none and target is not none and effective <= target + learned_overshoot)) }}"
+            }
+          ]
+          sequence = [
+            {
+              service = "input_number.set_value"
+              target = {
+                entity_id = "input_number.bedroomb_cooling_stop_room_temp"
+              }
+              data = {
+                value = "${local.bedroomb_climate_test_setup}\n{{ effective | round(1) if effective is not none else 0 }}"
+              }
+            },
+            {
+              service = "climate.set_hvac_mode"
+              target = {
+                entity_id = "climate.v357_spalniag_2"
+              }
+              data = {
+                hvac_mode = "fan_only"
+              }
+            },
+            {
+              service = "climate.set_fan_mode"
+              target = {
+                entity_id = "climate.v357_spalniag_2"
+              }
+              data = {
+                fan_mode = "${local.bedroomb_climate_test_setup}\n{{ cooling_fan_mode }}"
+              }
+            },
+            {
+              service = "logbook.log"
+              data = {
+                name      = "[TEST] BedroomB climate comfort band"
+                message   = "${local.bedroomb_climate_test_setup}\nSummer cooling reached learned stop band: saved stop_room and started fan_only configured coil cool-down; ${local.bedroomb_climate_test_log_suffix}"
+                entity_id = "climate.v357_spalniag_2"
+              }
+            }
+          ]
+        },
+        {
+          alias = "Summer: turn off after coil cool-down"
+          conditions = [
+            {
+              condition      = "template"
+              value_template = "${local.bedroomb_climate_test_setup}\n{{ not night_air_clean_window and states('climate.v357_spalniag_2') == 'fan_only' and (state_attr('climate.v357_spalniag_2', 'fan_mode') or '') == (cooling_fan_mode | string) and (as_timestamp(now()) - as_timestamp(states.climate.v357_spalniag_2.last_changed)) >= (coil_cooldown_minutes * 60) }}"
+            }
+          ]
+          sequence = [
+            {
+              service = "input_number.set_value"
+              target = {
+                entity_id = "input_number.bedroomb_cooling_overshoot"
+              }
+              data = {
+                value = "${local.bedroomb_climate_test_setup}\n{% set measured = [0, cooling_stop_room_temp - effective] | max if effective is not none and cooling_stop_room_temp > 0 else learned_overshoot %}\n{{ ([0, [1, (learned_overshoot * 0.7 + measured * 0.3)] | min] | max) | round(1) }}"
+              }
+            },
+            {
+              service = "input_number.set_value"
+              target = {
+                entity_id = "input_number.bedroomb_cooling_stop_room_temp"
+              }
+              data = {
+                value = 0
+              }
+            },
+            {
+              service = "climate.set_hvac_mode"
+              target = {
+                entity_id = "climate.v357_spalniag_2"
+              }
+              data = {
+                hvac_mode = "off"
+              }
+            },
+            {
+              service = "logbook.log"
+              data = {
+                name      = "[TEST] BedroomB climate comfort band"
+                message   = "${local.bedroomb_climate_test_setup}\nSummer coil cool-down complete: learned overshoot updated and climate off; measured_overshoot={{ [0, cooling_stop_room_temp - effective] | max if effective is not none and cooling_stop_room_temp > 0 else 'none' }}; ${local.bedroomb_climate_test_log_suffix}"
+                entity_id = "climate.v357_spalniag_2"
+              }
+            }
+          ]
+        },
+        {
+          alias = "Winter: heat when room is below target band and outside mode is winter"
+          conditions = [
+            {
+              condition      = "template"
+              value_template = "${local.bedroomb_climate_test_setup}\n{{ not night_sleep_window and climate_mode == 'winter' and effective is not none and target is not none and effective < target - winter_start_delta and dynamic_setpoint is not none }}"
+            },
+            {
+              condition      = "template"
+              value_template = "${local.bedroomb_climate_test_setup}\n{{ states('climate.v357_spalniag_2') != 'heat' or (state_attr('climate.v357_spalniag_2', 'temperature') | float(0)) != (dynamic_setpoint | float) }}"
+            }
+          ]
+          sequence = [
+            {
+              service = "climate.set_hvac_mode"
+              target = {
+                entity_id = "climate.v357_spalniag_2"
+              }
+              data = {
+                hvac_mode = "heat"
+              }
+            },
+            {
+              service = "climate.set_temperature"
+              target = {
+                entity_id = "climate.v357_spalniag_2"
+              }
+              data = {
+                temperature = "${local.bedroomb_climate_test_setup}\n{{ dynamic_setpoint }}"
+              }
+            },
+            {
+              service = "climate.set_fan_mode"
+              target = {
+                entity_id = "climate.v357_spalniag_2"
+              }
+              data = {
+                fan_mode = "3"
+              }
+            },
+            {
+              service = "logbook.log"
+              data = {
+                name      = "[TEST] BedroomB climate comfort band"
+                message   = "${local.bedroomb_climate_test_setup}\nWinter heating with outside fallback chain and dynamic climate setpoint; ${local.bedroomb_climate_test_log_suffix}"
+                entity_id = "climate.v357_spalniag_2"
+              }
+            }
+          ]
+        },
+        {
+          alias = "Winter: turn off after target is reached or outside mode is no longer winter"
+          conditions = [
+            {
+              condition      = "template"
+              value_template = "${local.bedroomb_climate_test_setup}\n{{ states('climate.v357_spalniag_2') == 'heat' and (climate_mode != 'winter' or (effective is not none and target is not none and effective >= target)) }}"
+            }
+          ]
+          sequence = [
+            {
+              service = "climate.set_hvac_mode"
+              target = {
+                entity_id = "climate.v357_spalniag_2"
+              }
+              data = {
+                hvac_mode = "off"
+              }
+            },
+            {
+              service = "logbook.log"
+              data = {
+                name      = "[TEST] BedroomB climate comfort band"
+                message   = "${local.bedroomb_climate_test_setup}\nWinter heating stopped: target reached or outside mode changed; ${local.bedroomb_climate_test_log_suffix}"
+                entity_id = "climate.v357_spalniag_2"
               }
             }
           ]
