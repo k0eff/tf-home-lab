@@ -305,9 +305,22 @@ locals {
 {% set outside_venti_battery = states('sensor.miaomiaoce_t2_56fa_battery_level') | float(0) %}
 {% set outside_weather = state_attr('weather.forecast_home', 'temperature') | float(none) %}
 {% set outside_venti_device = states('sensor.venti_outside_temperature') | float(none) %}
-{% if outside_venti_battery > 10 and outside_venti_raw is not none %}
+{% set room_sensor_min_battery = states('input_number.livingr_room_sensor_min_battery') | float(10) %}
+{% set outside_sensor_min_battery = states('input_number.livingr_outside_sensor_min_battery') | float(10) %}
+{% set outside_venti_offset = states('input_number.livingr_venti_in_offset') | float(2) %}
+{% set winter_outside_threshold = states('input_number.livingr_winter_outside_threshold') | float(8) %}
+{% set summer_outside_threshold = states('input_number.livingr_summer_outside_threshold') | float(15) %}
+{% set mild_outside_threshold = states('input_number.livingr_mild_outside_threshold') | float(28) %}
+{% set mild_summer_target = states('input_number.livingr_target_temperature') | float(23.9) %}
+{% set hot_summer_target = states('input_number.livingr_hot_summer_target') | float(24.0) %}
+{% set winter_target = states('input_number.livingr_winter_target') | float(22) %}
+{% set cooling_start_delta = states('input_number.livingr_cooling_start_delta') | float(0.4) %}
+{% set winter_start_delta = states('input_number.livingr_winter_start_delta') | float(0.5) %}
+{% set coil_cooldown_minutes = states('input_number.livingr_coil_cooldown_minutes') | float(7) %}
+{% set cooling_fan_mode = states('input_number.livingr_cooling_fan_mode') | int(2) %}
+{% if outside_venti_battery > outside_sensor_min_battery and outside_venti_raw is not none %}
   {% set outside_source = 'venti_in_adjusted' %}
-  {% set outside = outside_venti_raw - 2 %}
+  {% set outside = outside_venti_raw - outside_venti_offset %}
 {% elif outside_weather is not none %}
   {% set outside_source = 'weather_forecast_home' %}
   {% set outside = outside_weather %}
@@ -318,10 +331,10 @@ locals {
   {% set outside_source = 'none' %}
   {% set outside = none %}
 {% endif %}
-{% set climate_mode = 'winter' if outside is not none and outside <= 8 else 'summer' if outside is not none and outside >= 15 else 'neutral' %}
-{% set source = 'room_sensor' if battery > 10 and room is not none else 'climate_fallback' %}
+{% set climate_mode = 'winter' if outside is not none and outside <= winter_outside_threshold else 'summer' if outside is not none and outside >= summer_outside_threshold else 'neutral' %}
+{% set source = 'room_sensor' if battery > room_sensor_min_battery and room is not none else 'climate_fallback' %}
 {% set effective = room if source == 'room_sensor' else ac_temp %}
-{% set target = 23.9 if climate_mode == 'summer' and outside is not none and outside < 28 else 24.0 if climate_mode == 'summer' else 22 if climate_mode == 'winter' else none %}
+{% set target = mild_summer_target if climate_mode == 'summer' and outside is not none and outside < mild_outside_threshold else hot_summer_target if climate_mode == 'summer' else winter_target if climate_mode == 'winter' else none %}
 {% set learned_overshoot = [0, [1, states('input_number.livingr_cooling_overshoot') | float(0.2)] | min] | max %}
 {% set cooling_stop_room_temp = states('input_number.livingr_cooling_stop_room_temp') | float(0) %}
 {% set error = effective - target if effective is not none and target is not none else none %}
@@ -333,12 +346,12 @@ locals {
 {% set day_air_clean_window = now().hour >= 8 and now().hour <= 23 %}
 EOT
 
-  livingr_climate_test_log_suffix = "mode={{ climate_mode }}, night_sleep={{ night_sleep_window }}, night_air_clean={{ night_air_clean_window }}, outside_source={{ outside_source }}, outside={{ outside }}, venti_raw={{ outside_venti_raw }}, venti_battery={{ outside_venti_battery }}%, weather={{ outside_weather }}, source={{ source }}, room={{ room }}, room_battery={{ battery }}%, ac_sensor={{ ac_temp }}, target={{ target }}, learned_overshoot={{ learned_overshoot }}, stop_room={{ cooling_stop_room_temp }}, error={{ error | round(2) if error is not none else 'none' }}, setpoint={{ dynamic_setpoint }}"
+  livingr_climate_test_log_suffix = "mode={{ climate_mode }}, night_sleep={{ night_sleep_window }}, night_air_clean={{ night_air_clean_window }}, outside_source={{ outside_source }}, outside={{ outside }}, venti_raw={{ outside_venti_raw }}, venti_battery={{ outside_venti_battery }}%, weather={{ outside_weather }}, source={{ source }}, room={{ room }}, room_battery={{ battery }}%, ac_sensor={{ ac_temp }}, target={{ target }}, start_delta={{ cooling_start_delta }}, learned_overshoot={{ learned_overshoot }}, stop_room={{ cooling_stop_room_temp }}, fan={{ cooling_fan_mode }}, cooldown={{ coil_cooldown_minutes }}m, error={{ error | round(2) if error is not none else 'none' }}, setpoint={{ dynamic_setpoint }}"
 }
 
 resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_band" {
   alias       = "[TEST] AirCon - LivingR - room sensor comfort band"
-  description = "Test automation for LivingR climate.hol_2. Uses Living tv 1 temperature sensor while its battery is above 10%; falls back to climate current_temperature when the room sensor battery is at or below 10%. Climate mode is based on an outside temperature fallback chain: Venti In 7 with -2C offset when its battery is above 10%, then weather.forecast_home temperature, then sensor.venti_outside_temperature. Winter when outside <= 8C, summer when outside >= 15C, neutral when outside is > 8C and < 15C. Dynamic setpoint = climate_sensor_temperature - (effective_room_temperature - target). Summer target is 23.9C on mild summer days below 28C outside, otherwise 24.0C; winter target is 22C. Mild summer is tuned as a 23.9-24.3C comfort band: cooling starts above target + 0.4C and moves to fan_only + fan 2 at target + learned overshoot for a 7 minute coil cool-down/dry-out period before turning off. The learned overshoot is stored in input_number.livingr_cooling_overshoot and updated from each cool-down cycle using 70/30 smoothing. Night sleep window 00:30-08:30 blocks comfort cooling/heating and keeps the climate off, except the 03:00-06:00 air-clean window which uses fan_only + fan 5 in both seasons. During daytime, no LivingR motion for 15m raises fan to 5 only while the climate is already in fan_only; motion restores fan 3 in fan_only. Uses climate.set_hvac_mode: off because this MELCloud climate entity does not support climate.turn_off."
+  description = "Test automation for LivingR climate.hol_2. Uses Living tv 1 temperature sensor while its battery is above the configurable room-sensor battery helper; falls back to climate current_temperature below that. Climate mode is based on configurable outside thresholds and an outside temperature fallback chain: Venti In 7 minus the configurable offset, then weather.forecast_home temperature, then sensor.venti_outside_temperature. Dynamic setpoint = climate_sensor_temperature - (effective_room_temperature - target). The main comfort target, start delta, hot-summer target, outdoor thresholds, winter target, fan mode, coil cool-down minutes, learned overshoot, Venti offset, and sensor battery thresholds are all exposed through LivingR tuning input_number helpers. Mild summer is tuned as a configurable comfort band: cooling starts above target + start delta and moves to fan_only at target + learned overshoot. The learned overshoot is updated from each cool-down cycle using 70/30 smoothing. Night sleep window 00:30-08:30 blocks comfort cooling/heating and keeps the climate off, except the 03:00-06:00 air-clean window which uses fan_only + fan 5 in both seasons. During daytime, no LivingR motion for 15m raises fan to 5 only while the climate is already in fan_only; motion restores fan 3 in fan_only. Uses climate.set_hvac_mode: off because this MELCloud climate entity does not support climate.turn_off."
   mode        = "single"
 
   trigger = jsonencode([
@@ -575,7 +588,7 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
           conditions = [
             {
               condition      = "template"
-              value_template = "${local.livingr_climate_test_setup}\n{{ not night_sleep_window and climate_mode == 'summer' and effective is not none and target is not none and effective > target + 0.4 and dynamic_setpoint is not none }}"
+              value_template = "${local.livingr_climate_test_setup}\n{{ not night_sleep_window and climate_mode == 'summer' and effective is not none and target is not none and effective > target + cooling_start_delta and dynamic_setpoint is not none }}"
             },
             {
               condition      = "template"
@@ -607,7 +620,7 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
                 entity_id = "climate.hol_2"
               }
               data = {
-                fan_mode = "2"
+                fan_mode = "${local.livingr_climate_test_setup}\n{{ cooling_fan_mode }}"
               }
             },
             {
@@ -653,7 +666,7 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
                 entity_id = "climate.hol_2"
               }
               data = {
-                fan_mode = "2"
+                fan_mode = "${local.livingr_climate_test_setup}\n{{ cooling_fan_mode }}"
               }
             },
             {
@@ -671,7 +684,7 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
           conditions = [
             {
               condition      = "template"
-              value_template = "${local.livingr_climate_test_setup}\n{{ not night_air_clean_window and states('climate.hol_2') == 'fan_only' and (state_attr('climate.hol_2', 'fan_mode') or '') == '2' and (as_timestamp(now()) - as_timestamp(states.climate.hol_2.last_changed)) >= 420 }}"
+              value_template = "${local.livingr_climate_test_setup}\n{{ not night_air_clean_window and states('climate.hol_2') == 'fan_only' and (state_attr('climate.hol_2', 'fan_mode') or '') == (cooling_fan_mode | string) and (as_timestamp(now()) - as_timestamp(states.climate.hol_2.last_changed)) >= (coil_cooldown_minutes * 60) }}"
             }
           ]
           sequence = [
@@ -706,7 +719,7 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
               service = "logbook.log"
               data = {
                 name      = "[TEST] LivingR climate comfort band"
-                message   = "${local.livingr_climate_test_setup}\nSummer coil cool-down complete after 7 minutes: learned overshoot updated and climate off; measured_overshoot={{ [0, cooling_stop_room_temp - effective] | max if effective is not none and cooling_stop_room_temp > 0 else 'none' }}; ${local.livingr_climate_test_log_suffix}"
+                message   = "${local.livingr_climate_test_setup}\nSummer coil cool-down complete: learned overshoot updated and climate off; measured_overshoot={{ [0, cooling_stop_room_temp - effective] | max if effective is not none and cooling_stop_room_temp > 0 else 'none' }}; ${local.livingr_climate_test_log_suffix}"
                 entity_id = "climate.hol_2"
               }
             }
@@ -717,7 +730,7 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
           conditions = [
             {
               condition      = "template"
-              value_template = "${local.livingr_climate_test_setup}\n{{ not night_sleep_window and climate_mode == 'winter' and effective is not none and effective < 21.5 and dynamic_setpoint is not none }}"
+              value_template = "${local.livingr_climate_test_setup}\n{{ not night_sleep_window and climate_mode == 'winter' and effective is not none and target is not none and effective < target - winter_start_delta and dynamic_setpoint is not none }}"
             },
             {
               condition      = "template"
@@ -767,7 +780,7 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
           conditions = [
             {
               condition      = "template"
-              value_template = "${local.livingr_climate_test_setup}\n{{ states('climate.hol_2') == 'heat' and (climate_mode != 'winter' or (effective is not none and effective >= 22.0)) }}"
+              value_template = "${local.livingr_climate_test_setup}\n{{ states('climate.hol_2') == 'heat' and (climate_mode != 'winter' or (effective is not none and target is not none and effective >= target)) }}"
             }
           ]
           sequence = [
