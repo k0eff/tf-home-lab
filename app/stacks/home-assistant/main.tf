@@ -827,7 +827,7 @@ locals {
 {% set mild_summer_target = states('input_number.bedroomb_target_temperature') | float(23.5) %}
 {% set hot_summer_target = states('input_number.bedroomb_hot_summer_target') | float(23.8) %}
 {% set winter_target = states('input_number.bedroomb_winter_target') | float(22) %}
-{% set night_summer_target = states('input_number.bedroomb_night_summer_target') | float(23.5) %}
+{% set night_summer_target = states('input_number.bedroomb_night_summer_target') | float(28) %}
 {% set night_winter_target = states('input_number.bedroomb_night_winter_target') | float(19) %}
 {% set night_cooling_start_delta = states('input_number.bedroomb_night_cooling_start_delta') | float(0.4) %}
 {% set night_winter_start_delta = states('input_number.bedroomb_night_winter_start_delta') | float(0.5) %}
