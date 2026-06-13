@@ -827,10 +827,19 @@ locals {
 {% set mild_summer_target = states('input_number.bedroomb_target_temperature') | float(23.5) %}
 {% set hot_summer_target = states('input_number.bedroomb_hot_summer_target') | float(23.8) %}
 {% set winter_target = states('input_number.bedroomb_winter_target') | float(22) %}
+{% set night_summer_target = states('input_number.bedroomb_night_summer_target') | float(23.5) %}
+{% set night_winter_target = states('input_number.bedroomb_night_winter_target') | float(19) %}
+{% set night_cooling_start_delta = states('input_number.bedroomb_night_cooling_start_delta') | float(0.4) %}
+{% set night_winter_start_delta = states('input_number.bedroomb_night_winter_start_delta') | float(0.5) %}
 {% set cooling_start_delta = states('input_number.bedroomb_cooling_start_delta') | float(0.4) %}
 {% set winter_start_delta = states('input_number.bedroomb_winter_start_delta') | float(0.5) %}
 {% set coil_cooldown_minutes = states('input_number.bedroomb_coil_cooldown_minutes') | float(7) %}
 {% set cooling_fan_mode = states('input_number.bedroomb_cooling_fan_mode') | int(2) %}
+{% set minutes_now = now().hour * 60 + now().minute %}
+{% set night_sleep_window = minutes_now >= 30 and minutes_now < 510 %}
+{% set night_air_clean_window = minutes_now >= 180 and minutes_now < 360 %}
+{% set night_window = night_air_clean_window %}
+{% set day_air_clean_window = now().hour >= 8 and now().hour <= 23 %}
 {% if outside_venti_battery > outside_sensor_min_battery and outside_venti_raw is not none %}
   {% set outside_source = 'venti_in_adjusted' %}
   {% set outside = outside_venti_raw - outside_venti_offset %}
@@ -859,24 +868,22 @@ locals {
   {% set battery = primary_battery %}
 {% endif %}
 {% set effective = room if source in ['primary_room_sensor', 'ceiling_room_sensor'] else ac_temp %}
-{% set target = mild_summer_target if climate_mode == 'summer' and outside is not none and outside < mild_outside_threshold else hot_summer_target if climate_mode == 'summer' else winter_target if climate_mode == 'winter' else none %}
+{% set day_summer_target = mild_summer_target if climate_mode == 'summer' and outside is not none and outside < mild_outside_threshold else hot_summer_target if climate_mode == 'summer' else none %}
+{% set target = night_summer_target if night_sleep_window and climate_mode == 'summer' else day_summer_target if climate_mode == 'summer' else night_winter_target if night_sleep_window and climate_mode == 'winter' else winter_target if climate_mode == 'winter' else none %}
+{% set active_cooling_start_delta = night_cooling_start_delta if night_sleep_window else cooling_start_delta %}
+{% set active_winter_start_delta = night_winter_start_delta if night_sleep_window else winter_start_delta %}
 {% set learned_overshoot = [0, [1, states('input_number.bedroomb_cooling_overshoot') | float(0.2)] | min] | max %}
 {% set cooling_stop_room_temp = states('input_number.bedroomb_cooling_stop_room_temp') | float(0) %}
 {% set error = effective - target if effective is not none and target is not none else none %}
 {% set dynamic_setpoint = ([16, [31, ((ac_temp - error) * 2) | round(0) / 2] | min] | max) if ac_temp is not none and error is not none else none %}
-{% set minutes_now = now().hour * 60 + now().minute %}
-{% set night_sleep_window = minutes_now >= 30 and minutes_now < 510 %}
-{% set night_air_clean_window = minutes_now >= 180 and minutes_now < 360 %}
-{% set night_window = night_air_clean_window %}
-{% set day_air_clean_window = now().hour >= 8 and now().hour <= 23 %}
 EOT
 
-  bedroomb_climate_test_log_suffix = "mode={{ climate_mode }}, night_sleep={{ night_sleep_window }}, night_air_clean={{ night_air_clean_window }}, outside_source={{ outside_source }}, outside={{ outside }}, venti_raw={{ outside_venti_raw }}, venti_battery={{ outside_venti_battery }}%, weather={{ outside_weather }}, source={{ source }}, primary_room={{ primary_room }}, primary_battery={{ primary_battery }}%, ceiling_room={{ secondary_room }}, ceiling_battery={{ secondary_battery }}%, source_room={{ room }}, source_battery={{ battery }}%, ac_sensor={{ ac_temp }}, target={{ target }}, start_delta={{ cooling_start_delta }}, learned_overshoot={{ learned_overshoot }}, stop_room={{ cooling_stop_room_temp }}, fan={{ cooling_fan_mode }}, cooldown={{ coil_cooldown_minutes }}m, error={{ error | round(2) if error is not none else 'none' }}, setpoint={{ dynamic_setpoint }}"
+  bedroomb_climate_test_log_suffix = "mode={{ climate_mode }}, night_sleep={{ night_sleep_window }}, night_air_clean={{ night_air_clean_window }}, outside_source={{ outside_source }}, outside={{ outside }}, venti_raw={{ outside_venti_raw }}, venti_battery={{ outside_venti_battery }}%, weather={{ outside_weather }}, source={{ source }}, primary_room={{ primary_room }}, primary_battery={{ primary_battery }}%, ceiling_room={{ secondary_room }}, ceiling_battery={{ secondary_battery }}%, source_room={{ room }}, source_battery={{ battery }}%, ac_sensor={{ ac_temp }}, target={{ target }}, cooling_delta={{ active_cooling_start_delta }}, winter_delta={{ active_winter_start_delta }}, day_cooling_delta={{ cooling_start_delta }}, night_cooling_delta={{ night_cooling_start_delta }}, learned_overshoot={{ learned_overshoot }}, stop_room={{ cooling_stop_room_temp }}, fan={{ cooling_fan_mode }}, cooldown={{ coil_cooldown_minutes }}m, error={{ error | round(2) if error is not none else 'none' }}, setpoint={{ dynamic_setpoint }}"
 }
 
 resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_band" {
   alias       = "[TEST] AirCon - BedroomB - room sensor comfort band"
-  description = "Test automation for BedroomB climate.v357_spalniag_2. Uses BdrmB 11 as the primary room temperature sensor while its battery is above the configurable room-sensor battery helper; falls back to BedroomB ceil 2 if healthy, then to climate current_temperature. Climate mode is based on configurable outside thresholds and an outside temperature fallback chain: Venti In 7 minus the configurable offset, then weather.forecast_home temperature, then sensor.venti_outside_temperature. Dynamic setpoint = climate_sensor_temperature - (effective_room_temperature - target). The main comfort target, start delta, hot-summer target, outdoor thresholds, winter target, fan mode, coil cool-down minutes, learned overshoot, Venti offset, and sensor battery thresholds are all exposed through BedroomB tuning input_number helpers. Mild summer is tuned as a configurable comfort band: cooling starts above target + start delta and moves to fan_only at target + learned overshoot. The learned overshoot is updated from each cool-down cycle using 70/30 smoothing. Night sleep window 00:30-08:30 blocks comfort cooling/heating and keeps the climate off, except the 03:00-06:00 air-clean window which uses fan_only + fan 5 in both seasons. During daytime, no BedroomB motion for 15m raises fan to 5 only while the climate is already in fan_only; motion restores fan 3 in fan_only. Uses climate.set_hvac_mode: off because this MELCloud climate entity does not support climate.turn_off."
+  description = "Test automation for BedroomB climate.v357_spalniag_2. Uses BdrmB 11 as the primary room temperature sensor while its battery is above the configurable room-sensor battery helper; falls back to BedroomB ceil 2 if healthy, then to climate current_temperature. Climate mode is based on configurable outside thresholds and an outside temperature fallback chain: Venti In 7 minus the configurable offset, then weather.forecast_home temperature, then sensor.venti_outside_temperature. Dynamic setpoint = climate_sensor_temperature - (effective_room_temperature - target). The main comfort target, night targets, start deltas, hot-summer target, outdoor thresholds, winter target, fan mode, coil cool-down minutes, learned overshoot, Venti offset, and sensor battery thresholds are all exposed through BedroomB tuning input_number helpers. Mild summer is tuned as a configurable comfort band: cooling starts above target + start delta and moves to fan_only at target + learned overshoot. Night comfort uses separate summer/winter targets and deltas, while the 03:00-06:00 air-clean window still uses fan_only + fan 5 in both seasons. The learned overshoot is updated from each cool-down cycle using 70/30 smoothing. During daytime, no BedroomB motion for 15m raises fan to 5 only while the climate is already in fan_only; motion restores fan 3 in fan_only. Uses climate.set_hvac_mode: off because this MELCloud climate entity does not support climate.turn_off."
   mode        = "single"
 
   trigger = jsonencode([
@@ -1038,11 +1045,11 @@ resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_ba
           ]
         },
         {
-          alias = "Night: sleep keeps climate off outside air-clean window"
+          alias = "Night: keep climate off while inside the night comfort band"
           conditions = [
             {
               condition      = "template"
-              value_template = "${local.bedroomb_climate_test_setup}\n{{ night_sleep_window and not night_air_clean_window and states('climate.v357_spalniag_2') != 'off' }}"
+              value_template = "${local.bedroomb_climate_test_setup}\n{{ night_sleep_window and not night_air_clean_window and states('climate.v357_spalniag_2') != 'off' and not (climate_mode == 'summer' and effective is not none and target is not none and effective > target + active_cooling_start_delta) and not (climate_mode == 'winter' and effective is not none and target is not none and effective < target - active_winter_start_delta) }}"
             }
           ]
           sequence = [
@@ -1059,7 +1066,7 @@ resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_ba
               service = "logbook.log"
               data = {
                 name      = "[TEST] BedroomB climate comfort band"
-                message   = "${local.bedroomb_climate_test_setup}\nNight sleep: climate off outside 03:00-06:00 air-clean window; ${local.bedroomb_climate_test_log_suffix}"
+                message   = "${local.bedroomb_climate_test_setup}\nNight comfort band: climate off until room leaves the configured night band; ${local.bedroomb_climate_test_log_suffix}"
                 entity_id = "climate.v357_spalniag_2"
               }
             }
@@ -1126,7 +1133,7 @@ resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_ba
           conditions = [
             {
               condition      = "template"
-              value_template = "${local.bedroomb_climate_test_setup}\n{{ not night_sleep_window and climate_mode == 'summer' and effective is not none and target is not none and effective > target + cooling_start_delta and dynamic_setpoint is not none }}"
+              value_template = "${local.bedroomb_climate_test_setup}\n{{ not night_air_clean_window and climate_mode == 'summer' and effective is not none and target is not none and effective > target + active_cooling_start_delta and dynamic_setpoint is not none }}"
             },
             {
               condition      = "template"
@@ -1268,7 +1275,7 @@ resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_ba
           conditions = [
             {
               condition      = "template"
-              value_template = "${local.bedroomb_climate_test_setup}\n{{ not night_sleep_window and climate_mode == 'winter' and effective is not none and target is not none and effective < target - winter_start_delta and dynamic_setpoint is not none }}"
+              value_template = "${local.bedroomb_climate_test_setup}\n{{ not night_air_clean_window and climate_mode == 'winter' and effective is not none and target is not none and effective < target - active_winter_start_delta and dynamic_setpoint is not none }}"
             },
             {
               condition      = "template"
