@@ -356,6 +356,8 @@ locals {
 {% set night_air_clean_window = (minutes_now >= air_clean_start_minutes and minutes_now < air_clean_end_minutes) if air_clean_start_minutes < air_clean_end_minutes else (minutes_now >= air_clean_start_minutes or minutes_now < air_clean_end_minutes) %}
 {% set night_window = night_air_clean_window %}
 {% set day_air_clean_window = minutes_now >= day_start_minutes and minutes_now <= 1439 %}
+{% set livingr_manual_override_until = states('input_datetime.livingr_manual_override_until') %}
+{% set manual_override_active = is_state('input_boolean.livingr_manual_override_active', 'on') and livingr_manual_override_until not in ['unknown', 'unavailable', 'none'] and as_timestamp(livingr_manual_override_until, 0) > as_timestamp(now()) %}
 {% set day_summer_target = mild_summer_target if climate_mode == 'summer' and outside is not none and outside < mild_outside_threshold else hot_summer_target if climate_mode == 'summer' else none %}
 {% set target = night_summer_target if night_sleep_window and climate_mode == 'summer' else day_summer_target if climate_mode == 'summer' else night_winter_target if night_sleep_window and climate_mode == 'winter' else winter_target if climate_mode == 'winter' else none %}
 {% set active_cooling_start_delta = night_cooling_start_delta if night_sleep_window else cooling_start_delta %}
@@ -364,7 +366,7 @@ locals {
 {% set dynamic_setpoint = ([16, [31, ((ac_temp - error) * 2) | round(0) / 2] | min] | max) if ac_temp is not none and error is not none else none %}
 EOT
 
-  livingr_climate_test_log_suffix = "mode={{ climate_mode }}, night_sleep={{ night_sleep_window }}, night_air_clean={{ night_air_clean_window }}, outside_source={{ outside_source }}, outside={{ outside }}, venti_raw={{ outside_venti_raw }}, venti_battery={{ outside_venti_battery }}%, weather={{ outside_weather }}, source={{ source }}, room={{ room }}, room_battery={{ battery }}%, ac_sensor={{ ac_temp }}, target={{ target }}, night_start={{ livingr_night_start_value }}, day_start={{ livingr_day_start_value }}, air_clean={{ livingr_air_clean_start_value }}-{{ livingr_air_clean_end_value }}, cooling_delta={{ active_cooling_start_delta }}, winter_delta={{ active_winter_start_delta }}, day_cooling_delta={{ cooling_start_delta }}, night_cooling_delta={{ night_cooling_start_delta }}, learned_overshoot={{ learned_overshoot }}, stop_room={{ cooling_stop_room_temp }}, fan={{ cooling_fan_mode }}, cooldown={{ coil_cooldown_minutes }}m, error={{ error | round(2) if error is not none else 'none' }}, setpoint={{ dynamic_setpoint }}"
+  livingr_climate_test_log_suffix = "mode={{ climate_mode }}, manual_override={{ manual_override_active }}, manual_until={{ livingr_manual_override_until }}, night_sleep={{ night_sleep_window }}, night_air_clean={{ night_air_clean_window }}, outside_source={{ outside_source }}, outside={{ outside }}, venti_raw={{ outside_venti_raw }}, venti_battery={{ outside_venti_battery }}%, weather={{ outside_weather }}, source={{ source }}, room={{ room }}, room_battery={{ battery }}%, ac_sensor={{ ac_temp }}, target={{ target }}, night_start={{ livingr_night_start_value }}, day_start={{ livingr_day_start_value }}, air_clean={{ livingr_air_clean_start_value }}-{{ livingr_air_clean_end_value }}, cooling_delta={{ active_cooling_start_delta }}, winter_delta={{ active_winter_start_delta }}, day_cooling_delta={{ cooling_start_delta }}, night_cooling_delta={{ night_cooling_start_delta }}, learned_overshoot={{ learned_overshoot }}, stop_room={{ cooling_stop_room_temp }}, fan={{ cooling_fan_mode }}, cooldown={{ coil_cooldown_minutes }}m, error={{ error | round(2) if error is not none else 'none' }}, setpoint={{ dynamic_setpoint }}"
 }
 
 resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_band" {
@@ -465,6 +467,10 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
     {
       condition      = "template"
       value_template = "${local.livingr_climate_test_setup}\n{{ outside is not none }}"
+    },
+    {
+      condition      = "template"
+      value_template = "${local.livingr_climate_test_setup}\n{{ not manual_override_active }}"
     }
   ])
 
@@ -897,6 +903,245 @@ resource "homeassistant_automation" "livingr_program_delayed_toggle" {
   ])
 }
 
+resource "homeassistant_automation" "livingr_manual_override" {
+  alias       = "[TEST] AirCon - LivingR - manual override"
+  description = "Applies temporary manual climate settings for LivingR. While input_boolean.livingr_manual_override_active is on and input_datetime.livingr_manual_override_until is in the future, the comfort-band automation stands down. Default duration is controlled by input_number.livingr_manual_override_duration_minutes."
+  mode        = "restart"
+
+  trigger = jsonencode([
+    {
+      platform  = "state"
+      entity_id = "input_boolean.livingr_manual_override_active"
+      to        = "on"
+      id        = "override_started"
+    },
+    {
+      platform  = "state"
+      entity_id = "input_boolean.livingr_manual_override_active"
+      to        = "off"
+      id        = "override_cancelled"
+    },
+    {
+      platform  = "state"
+      entity_id = "input_number.livingr_manual_override_duration_minutes"
+      id        = "override_duration_changed"
+    },
+    {
+      platform = "state"
+      entity_id = [
+        "input_number.livingr_manual_override_target_temperature",
+        "input_select.livingr_manual_override_hvac_mode",
+        "input_select.livingr_manual_override_fan_mode",
+        "input_select.livingr_manual_override_swing_mode"
+      ]
+      id = "override_control_changed"
+    },
+    {
+      platform = "time_pattern"
+      minutes  = "/1"
+      id       = "override_expiry_check"
+    }
+  ])
+
+  condition = jsonencode([
+    {
+      condition      = "template"
+      value_template = "{{ states('climate.hol_2') not in ['unknown', 'unavailable'] }}"
+    }
+  ])
+
+  action = jsonencode([
+    {
+      choose = [
+        {
+          alias = "Expire manual override"
+          conditions = [
+            {
+              condition      = "template"
+              value_template = "{{ trigger.id == 'override_expiry_check' and is_state('input_boolean.livingr_manual_override_active', 'on') and states('input_datetime.livingr_manual_override_until') not in ['unknown', 'unavailable', 'none'] and as_timestamp(states('input_datetime.livingr_manual_override_until'), 0) <= as_timestamp(now()) }}"
+            }
+          ]
+          sequence = [
+            {
+              service = "input_boolean.turn_off"
+              target = {
+                entity_id = "input_boolean.livingr_manual_override_active"
+              }
+            },
+            {
+              service = "logbook.log"
+              data = {
+                name      = "[TEST] LivingR manual override"
+                message   = "Manual override expired; comfort program may resume"
+                entity_id = "climate.hol_2"
+              }
+            },
+            {
+              choose = [
+                {
+                  conditions = [
+                    {
+                      condition = "state"
+                      entity_id = "input_boolean.livingr_program_requested"
+                      state     = "on"
+                    }
+                  ]
+                  sequence = [
+                    {
+                      service = "automation.trigger"
+                      target = {
+                        entity_id = "automation.test_aircon_livingr_room_sensor_comfort_band"
+                      }
+                      data = {
+                        skip_condition = false
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          alias = "Manual override cancelled by user"
+          conditions = [
+            {
+              condition      = "template"
+              value_template = "{{ trigger.id == 'override_cancelled' }}"
+            }
+          ]
+          sequence = [
+            {
+              service = "logbook.log"
+              data = {
+                name      = "[TEST] LivingR manual override"
+                message   = "Manual override cancelled; comfort program may resume"
+                entity_id = "climate.hol_2"
+              }
+            },
+            {
+              choose = [
+                {
+                  conditions = [
+                    {
+                      condition = "state"
+                      entity_id = "input_boolean.livingr_program_requested"
+                      state     = "on"
+                    }
+                  ]
+                  sequence = [
+                    {
+                      service = "automation.trigger"
+                      target = {
+                        entity_id = "automation.test_aircon_livingr_room_sensor_comfort_band"
+                      }
+                      data = {
+                        skip_condition = false
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          alias = "Apply manual override controls"
+          conditions = [
+            {
+              condition      = "template"
+              value_template = "{{ is_state('input_boolean.livingr_manual_override_active', 'on') and trigger.id in ['override_started', 'override_duration_changed', 'override_control_changed'] }}"
+            }
+          ]
+          sequence = [
+            {
+              choose = [
+                {
+                  conditions = [
+                    {
+                      condition      = "template"
+                      value_template = "{{ trigger.id in ['override_started', 'override_duration_changed'] }}"
+                    }
+                  ]
+                  sequence = [
+                    {
+                      service = "input_datetime.set_datetime"
+                      target = {
+                        entity_id = "input_datetime.livingr_manual_override_until"
+                      }
+                      data = {
+                        datetime = "{{ (now() + timedelta(minutes=(states('input_number.livingr_manual_override_duration_minutes') | int(60)))).strftime('%Y-%m-%d %H:%M:%S') }}"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              service = "climate.set_hvac_mode"
+              target = {
+                entity_id = "climate.hol_2"
+              }
+              data = {
+                hvac_mode = "{{ states('input_select.livingr_manual_override_hvac_mode') }}"
+              }
+            },
+            {
+              choose = [
+                {
+                  conditions = [
+                    {
+                      condition      = "template"
+                      value_template = "{{ states('input_select.livingr_manual_override_hvac_mode') != 'off' }}"
+                    }
+                  ]
+                  sequence = [
+                    {
+                      service = "climate.set_temperature"
+                      target = {
+                        entity_id = "climate.hol_2"
+                      }
+                      data = {
+                        temperature = "{{ states('input_number.livingr_manual_override_target_temperature') | float(24) }}"
+                      }
+                    },
+                    {
+                      service = "climate.set_fan_mode"
+                      target = {
+                        entity_id = "climate.hol_2"
+                      }
+                      data = {
+                        fan_mode = "{{ states('input_select.livingr_manual_override_fan_mode') }}"
+                      }
+                    },
+                    {
+                      service = "climate.set_swing_mode"
+                      target = {
+                        entity_id = "climate.hol_2"
+                      }
+                      data = {
+                        swing_mode = "{{ states('input_select.livingr_manual_override_swing_mode') }}"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              service = "logbook.log"
+              data = {
+                name      = "[TEST] LivingR manual override"
+                message   = "Applied manual override: mode={{ states('input_select.livingr_manual_override_hvac_mode') }}, target={{ states('input_number.livingr_manual_override_target_temperature') }}, fan={{ states('input_select.livingr_manual_override_fan_mode') }}, swing={{ states('input_select.livingr_manual_override_swing_mode') }}, until={{ states('input_datetime.livingr_manual_override_until') }}"
+                entity_id = "climate.hol_2"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ])
+}
+
 locals {
   bedroomb_climate_test_setup = <<EOT
 {% set primary_room = states('sensor.miaomiaoce_t2_5249_temperature_humidity_sensor') | float(none) %}
@@ -956,6 +1201,8 @@ locals {
   {% set outside = none %}
 {% endif %}
 {% set climate_mode = 'winter' if outside is not none and outside <= winter_outside_threshold else 'summer' if outside is not none and outside >= summer_outside_threshold else 'neutral' %}
+{% set bedroomb_manual_override_until = states('input_datetime.bedroomb_manual_override_until') %}
+{% set manual_override_active = is_state('input_boolean.bedroomb_manual_override_active', 'on') and bedroomb_manual_override_until not in ['unknown', 'unavailable', 'none'] and as_timestamp(bedroomb_manual_override_until, 0) > as_timestamp(now()) %}
 {% if primary_battery > room_sensor_min_battery and primary_room is not none %}
   {% set source = 'primary_room_sensor' %}
   {% set room = primary_room %}
@@ -980,7 +1227,7 @@ locals {
 {% set dynamic_setpoint = ([16, [31, ((ac_temp - error) * 2) | round(0) / 2] | min] | max) if ac_temp is not none and error is not none else none %}
 EOT
 
-  bedroomb_climate_test_log_suffix = "mode={{ climate_mode }}, night_sleep={{ night_sleep_window }}, night_air_clean={{ night_air_clean_window }}, outside_source={{ outside_source }}, outside={{ outside }}, venti_raw={{ outside_venti_raw }}, venti_battery={{ outside_venti_battery }}%, weather={{ outside_weather }}, source={{ source }}, primary_room={{ primary_room }}, primary_battery={{ primary_battery }}%, ceiling_room={{ secondary_room }}, ceiling_battery={{ secondary_battery }}%, source_room={{ room }}, source_battery={{ battery }}%, ac_sensor={{ ac_temp }}, target={{ target }}, night_start={{ bedroomb_night_start_value }}, day_start={{ bedroomb_day_start_value }}, air_clean={{ bedroomb_air_clean_start_value }}-{{ bedroomb_air_clean_end_value }}, cooling_delta={{ active_cooling_start_delta }}, winter_delta={{ active_winter_start_delta }}, day_cooling_delta={{ cooling_start_delta }}, night_cooling_delta={{ night_cooling_start_delta }}, learned_overshoot={{ learned_overshoot }}, stop_room={{ cooling_stop_room_temp }}, fan={{ cooling_fan_mode }}, cooldown={{ coil_cooldown_minutes }}m, error={{ error | round(2) if error is not none else 'none' }}, setpoint={{ dynamic_setpoint }}"
+  bedroomb_climate_test_log_suffix = "mode={{ climate_mode }}, manual_override={{ manual_override_active }}, manual_until={{ bedroomb_manual_override_until }}, night_sleep={{ night_sleep_window }}, night_air_clean={{ night_air_clean_window }}, outside_source={{ outside_source }}, outside={{ outside }}, venti_raw={{ outside_venti_raw }}, venti_battery={{ outside_venti_battery }}%, weather={{ outside_weather }}, source={{ source }}, primary_room={{ primary_room }}, primary_battery={{ primary_battery }}%, ceiling_room={{ secondary_room }}, ceiling_battery={{ secondary_battery }}%, source_room={{ room }}, source_battery={{ battery }}%, ac_sensor={{ ac_temp }}, target={{ target }}, night_start={{ bedroomb_night_start_value }}, day_start={{ bedroomb_day_start_value }}, air_clean={{ bedroomb_air_clean_start_value }}-{{ bedroomb_air_clean_end_value }}, cooling_delta={{ active_cooling_start_delta }}, winter_delta={{ active_winter_start_delta }}, day_cooling_delta={{ cooling_start_delta }}, night_cooling_delta={{ night_cooling_start_delta }}, learned_overshoot={{ learned_overshoot }}, stop_room={{ cooling_stop_room_temp }}, fan={{ cooling_fan_mode }}, cooldown={{ coil_cooldown_minutes }}m, error={{ error | round(2) if error is not none else 'none' }}, setpoint={{ dynamic_setpoint }}"
 }
 
 resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_band" {
@@ -1094,6 +1341,10 @@ resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_ba
     {
       condition      = "template"
       value_template = "${local.bedroomb_climate_test_setup}\n{{ outside is not none }}"
+    },
+    {
+      condition      = "template"
+      value_template = "${local.bedroomb_climate_test_setup}\n{{ not manual_override_active }}"
     }
   ])
 
@@ -1517,6 +1768,245 @@ resource "homeassistant_automation" "bedroomb_program_delayed_toggle" {
               }
               data = {
                 stop_actions = false
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ])
+}
+
+resource "homeassistant_automation" "bedroomb_manual_override" {
+  alias       = "[TEST] AirCon - BedroomB - manual override"
+  description = "Applies temporary manual climate settings for BedroomB. While input_boolean.bedroomb_manual_override_active is on and input_datetime.bedroomb_manual_override_until is in the future, the comfort-band automation stands down. Default duration is controlled by input_number.bedroomb_manual_override_duration_minutes."
+  mode        = "restart"
+
+  trigger = jsonencode([
+    {
+      platform  = "state"
+      entity_id = "input_boolean.bedroomb_manual_override_active"
+      to        = "on"
+      id        = "override_started"
+    },
+    {
+      platform  = "state"
+      entity_id = "input_boolean.bedroomb_manual_override_active"
+      to        = "off"
+      id        = "override_cancelled"
+    },
+    {
+      platform  = "state"
+      entity_id = "input_number.bedroomb_manual_override_duration_minutes"
+      id        = "override_duration_changed"
+    },
+    {
+      platform = "state"
+      entity_id = [
+        "input_number.bedroomb_manual_override_target_temperature",
+        "input_select.bedroomb_manual_override_hvac_mode",
+        "input_select.bedroomb_manual_override_fan_mode",
+        "input_select.bedroomb_manual_override_swing_mode"
+      ]
+      id = "override_control_changed"
+    },
+    {
+      platform = "time_pattern"
+      minutes  = "/1"
+      id       = "override_expiry_check"
+    }
+  ])
+
+  condition = jsonencode([
+    {
+      condition      = "template"
+      value_template = "{{ states('climate.v357_spalniag_2') not in ['unknown', 'unavailable'] }}"
+    }
+  ])
+
+  action = jsonencode([
+    {
+      choose = [
+        {
+          alias = "Expire manual override"
+          conditions = [
+            {
+              condition      = "template"
+              value_template = "{{ trigger.id == 'override_expiry_check' and is_state('input_boolean.bedroomb_manual_override_active', 'on') and states('input_datetime.bedroomb_manual_override_until') not in ['unknown', 'unavailable', 'none'] and as_timestamp(states('input_datetime.bedroomb_manual_override_until'), 0) <= as_timestamp(now()) }}"
+            }
+          ]
+          sequence = [
+            {
+              service = "input_boolean.turn_off"
+              target = {
+                entity_id = "input_boolean.bedroomb_manual_override_active"
+              }
+            },
+            {
+              service = "logbook.log"
+              data = {
+                name      = "[TEST] BedroomB manual override"
+                message   = "Manual override expired; comfort program may resume"
+                entity_id = "climate.v357_spalniag_2"
+              }
+            },
+            {
+              choose = [
+                {
+                  conditions = [
+                    {
+                      condition = "state"
+                      entity_id = "input_boolean.bedroomb_program_requested"
+                      state     = "on"
+                    }
+                  ]
+                  sequence = [
+                    {
+                      service = "automation.trigger"
+                      target = {
+                        entity_id = "automation.test_aircon_bedroomb_room_sensor_comfort_band"
+                      }
+                      data = {
+                        skip_condition = false
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          alias = "Manual override cancelled by user"
+          conditions = [
+            {
+              condition      = "template"
+              value_template = "{{ trigger.id == 'override_cancelled' }}"
+            }
+          ]
+          sequence = [
+            {
+              service = "logbook.log"
+              data = {
+                name      = "[TEST] BedroomB manual override"
+                message   = "Manual override cancelled; comfort program may resume"
+                entity_id = "climate.v357_spalniag_2"
+              }
+            },
+            {
+              choose = [
+                {
+                  conditions = [
+                    {
+                      condition = "state"
+                      entity_id = "input_boolean.bedroomb_program_requested"
+                      state     = "on"
+                    }
+                  ]
+                  sequence = [
+                    {
+                      service = "automation.trigger"
+                      target = {
+                        entity_id = "automation.test_aircon_bedroomb_room_sensor_comfort_band"
+                      }
+                      data = {
+                        skip_condition = false
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          alias = "Apply manual override controls"
+          conditions = [
+            {
+              condition      = "template"
+              value_template = "{{ is_state('input_boolean.bedroomb_manual_override_active', 'on') and trigger.id in ['override_started', 'override_duration_changed', 'override_control_changed'] }}"
+            }
+          ]
+          sequence = [
+            {
+              choose = [
+                {
+                  conditions = [
+                    {
+                      condition      = "template"
+                      value_template = "{{ trigger.id in ['override_started', 'override_duration_changed'] }}"
+                    }
+                  ]
+                  sequence = [
+                    {
+                      service = "input_datetime.set_datetime"
+                      target = {
+                        entity_id = "input_datetime.bedroomb_manual_override_until"
+                      }
+                      data = {
+                        datetime = "{{ (now() + timedelta(minutes=(states('input_number.bedroomb_manual_override_duration_minutes') | int(60)))).strftime('%Y-%m-%d %H:%M:%S') }}"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              service = "climate.set_hvac_mode"
+              target = {
+                entity_id = "climate.v357_spalniag_2"
+              }
+              data = {
+                hvac_mode = "{{ states('input_select.bedroomb_manual_override_hvac_mode') }}"
+              }
+            },
+            {
+              choose = [
+                {
+                  conditions = [
+                    {
+                      condition      = "template"
+                      value_template = "{{ states('input_select.bedroomb_manual_override_hvac_mode') != 'off' }}"
+                    }
+                  ]
+                  sequence = [
+                    {
+                      service = "climate.set_temperature"
+                      target = {
+                        entity_id = "climate.v357_spalniag_2"
+                      }
+                      data = {
+                        temperature = "{{ states('input_number.bedroomb_manual_override_target_temperature') | float(24) }}"
+                      }
+                    },
+                    {
+                      service = "climate.set_fan_mode"
+                      target = {
+                        entity_id = "climate.v357_spalniag_2"
+                      }
+                      data = {
+                        fan_mode = "{{ states('input_select.bedroomb_manual_override_fan_mode') }}"
+                      }
+                    },
+                    {
+                      service = "climate.set_swing_mode"
+                      target = {
+                        entity_id = "climate.v357_spalniag_2"
+                      }
+                      data = {
+                        swing_mode = "{{ states('input_select.bedroomb_manual_override_swing_mode') }}"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              service = "logbook.log"
+              data = {
+                name      = "[TEST] BedroomB manual override"
+                message   = "Applied manual override: mode={{ states('input_select.bedroomb_manual_override_hvac_mode') }}, target={{ states('input_number.bedroomb_manual_override_target_temperature') }}, fan={{ states('input_select.bedroomb_manual_override_fan_mode') }}, swing={{ states('input_select.bedroomb_manual_override_swing_mode') }}, until={{ states('input_datetime.bedroomb_manual_override_until') }}"
+                entity_id = "climate.v357_spalniag_2"
               }
             }
           ]

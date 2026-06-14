@@ -212,3 +212,13 @@ import {
   to = homeassistant_automation.bedroomb_program_delayed_toggle
   id = "1770077000032"
 }
+
+import {
+  to = homeassistant_automation.livingr_manual_override
+  id = "1770077000041"
+}
+
+import {
+  to = homeassistant_automation.bedroomb_manual_override
+  id = "1770077000042"
+}
