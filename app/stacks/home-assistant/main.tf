@@ -599,7 +599,7 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
           conditions = [
             {
               condition      = "template"
-              value_template = "${local.livingr_climate_test_setup}\n{{ not night_sleep_window and climate_mode == 'summer' and effective is not none and target is not none and effective > target + cooling_start_delta and dynamic_setpoint is not none }}"
+              value_template = "${local.livingr_climate_test_setup}\n{{ not night_sleep_window and climate_mode == 'summer' and effective is not none and target is not none and effective >= target + cooling_start_delta and dynamic_setpoint is not none }}"
             },
             {
               condition      = "template"
@@ -741,7 +741,7 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
           conditions = [
             {
               condition      = "template"
-              value_template = "${local.livingr_climate_test_setup}\n{{ not night_sleep_window and climate_mode == 'winter' and effective is not none and target is not none and effective < target - winter_start_delta and dynamic_setpoint is not none }}"
+              value_template = "${local.livingr_climate_test_setup}\n{{ not night_sleep_window and climate_mode == 'winter' and effective is not none and target is not none and effective <= target - winter_start_delta and dynamic_setpoint is not none }}"
             },
             {
               condition      = "template"
@@ -1073,7 +1073,7 @@ resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_ba
           conditions = [
             {
               condition      = "template"
-              value_template = "${local.bedroomb_climate_test_setup}\n{{ night_sleep_window and not night_air_clean_window and states('climate.v357_spalniag_2') != 'off' and not (climate_mode == 'summer' and effective is not none and target is not none and effective > target + active_cooling_start_delta) and not (climate_mode == 'winter' and effective is not none and target is not none and effective < target - active_winter_start_delta) }}"
+              value_template = "${local.bedroomb_climate_test_setup}\n{{ night_sleep_window and not night_air_clean_window and states('climate.v357_spalniag_2') != 'off' and not (climate_mode == 'summer' and effective is not none and target is not none and effective >= target + active_cooling_start_delta) and not (climate_mode == 'winter' and effective is not none and target is not none and effective <= target - active_winter_start_delta) }}"
             }
           ]
           sequence = [
@@ -1157,7 +1157,7 @@ resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_ba
           conditions = [
             {
               condition      = "template"
-              value_template = "${local.bedroomb_climate_test_setup}\n{{ not night_air_clean_window and climate_mode == 'summer' and effective is not none and target is not none and effective > target + active_cooling_start_delta and dynamic_setpoint is not none }}"
+              value_template = "${local.bedroomb_climate_test_setup}\n{{ not night_air_clean_window and climate_mode == 'summer' and effective is not none and target is not none and effective >= target + active_cooling_start_delta and dynamic_setpoint is not none }}"
             },
             {
               condition      = "template"
@@ -1299,7 +1299,7 @@ resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_ba
           conditions = [
             {
               condition      = "template"
-              value_template = "${local.bedroomb_climate_test_setup}\n{{ not night_air_clean_window and climate_mode == 'winter' and effective is not none and target is not none and effective < target - active_winter_start_delta and dynamic_setpoint is not none }}"
+              value_template = "${local.bedroomb_climate_test_setup}\n{{ not night_air_clean_window and climate_mode == 'winter' and effective is not none and target is not none and effective <= target - active_winter_start_delta and dynamic_setpoint is not none }}"
             },
             {
               condition      = "template"
