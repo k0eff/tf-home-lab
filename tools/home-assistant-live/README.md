@@ -120,6 +120,16 @@ HA_BASE=${HA_URL%/} /Users/krasi/.cache/codex-runtimes/codex-primary-runtime/dep
   - writes: да
   - subcommands: няма
   - options: няма
+- `setup_presence.js`
+  - създава fused presence helper-и, patch-ва presence automation и добавя status/diagnostics карти в `my-dash`
+  - writes: да
+  - subcommands: няма
+  - options: няма
+- `sync_room_energy_tables.js`
+  - генерира дневни kWh markdown таблици за LivingR и BedroomB от history API и ги patch-ва в room dashboard-ите
+  - writes: да
+  - subcommands: няма
+  - options: няма
 - `update_livingr_energy_table.js`
   - обновява energy table съдържание за LivingR
   - writes: да
@@ -229,6 +239,9 @@ HA_BASE=${HA_URL%/} /Users/krasi/.cache/codex-runtimes/codex-primary-runtime/dep
   - executable: не
 - `livingr_energy_table_pinned.md`
   - pinned comparison rows за LivingR energy view
+  - executable: не
+- `bedroomb_energy_table.md`
+  - generated markdown table за BedroomB energy history/reference
   - executable: не
 
 ## Кога добавяме нов script

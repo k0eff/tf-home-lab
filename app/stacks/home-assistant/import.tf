@@ -222,3 +222,8 @@ import {
   to = homeassistant_automation.bedroomb_manual_override
   id = "1770077000042"
 }
+
+import {
+  to = homeassistant_automation.presence_fused_home_detection
+  id = "1770077000051"
+}

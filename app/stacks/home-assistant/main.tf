@@ -2015,3 +2015,152 @@ resource "homeassistant_automation" "bedroomb_manual_override" {
     }
   ])
 }
+
+# Required live-managed helpers for the fused presence workflow:
+# - input_boolean.presence_krasimir_koev
+# - input_boolean.presence_ema_yosifova
+# - input_boolean.someone_home
+# - input_boolean.internet_connection
+resource "homeassistant_automation" "presence_fused_home_detection" {
+  alias       = "Presence - fused home detection"
+  description = "Fused home detection for Krasimir and Ema. Combines GPS, Wi-Fi SSID/BSSID, Fold 4 public IP, and a weather freshness fallback. When the home internet looks down, each per-person helper locks to its last home state unless local Wi-Fi evidence still says home. someone_home also stays on from local motion."
+  mode        = "restart"
+  trigger = jsonencode([
+    {
+      platform = "time_pattern"
+      seconds  = "/30"
+    },
+    {
+      platform = "state"
+      entity_id = [
+        "device_tracker.fold_4",
+        "sensor.fold_4_wifi_connection",
+        "sensor.fold_4_wifi_bssid",
+        "sensor.fold_4_public_ip_address",
+        "device_tracker.iphone",
+        "sensor.iphone15promax_ssid",
+        "sensor.iphone15promax_bssid",
+        "sensor.iphone15promax_connection_type",
+        "weather.forecast_home",
+        "binary_sensor.motion01",
+        "binary_sensor.motion03",
+        "binary_sensor.motion04spalniam"
+      ]
+    }
+  ])
+  condition = jsonencode([])
+  action = jsonencode([
+    {
+      choose = [
+        {
+          conditions = [
+            {
+              condition = "template"
+              value_template = "{{ states('sensor.fold_4_public_ip_address') == '151.251.104.115' or (((states('sensor.fold_4_wifi_connection') == '512KB' or states('sensor.fold_4_wifi_bssid') in ['9c:9d:7e:75:21:a1', '9c:9d:7e:75:21:a0']) or ((states('sensor.iphone15promax_connection_type') == 'Wi-Fi') and (states('sensor.iphone15promax_ssid') == '512KB' or states('sensor.iphone15promax_bssid') in ['9c:9d:7e:75:21:a1', '9c:9d:7e:75:21:a0']))) and (states('weather.forecast_home') not in ['unknown', 'unavailable', 'none'] and (as_timestamp(now()) - as_timestamp(states.weather.forecast_home.last_updated, 0)) < 7200)) }}"
+            }
+          ]
+          sequence = [
+            {
+              service = "input_boolean.turn_on"
+              target = {
+                entity_id = "input_boolean.internet_connection"
+              }
+            }
+          ]
+        }
+      ]
+      default = [
+        {
+          service = "input_boolean.turn_off"
+          target = {
+            entity_id = "input_boolean.internet_connection"
+          }
+        }
+      ]
+    },
+    {
+      choose = [
+        {
+          conditions = [
+            {
+              condition = "template"
+              value_template = "{{ ((states('sensor.fold_4_public_ip_address') == '151.251.104.115' or (((states('sensor.fold_4_wifi_connection') == '512KB' or states('sensor.fold_4_wifi_bssid') in ['9c:9d:7e:75:21:a1', '9c:9d:7e:75:21:a0']) or ((states('sensor.iphone15promax_connection_type') == 'Wi-Fi') and (states('sensor.iphone15promax_ssid') == '512KB' or states('sensor.iphone15promax_bssid') in ['9c:9d:7e:75:21:a1', '9c:9d:7e:75:21:a0']))) and (states('weather.forecast_home') not in ['unknown', 'unavailable', 'none'] and (as_timestamp(now()) - as_timestamp(states.weather.forecast_home.last_updated, 0)) < 7200))) and ((states('device_tracker.fold_4') | lower == 'home') or (states('sensor.fold_4_wifi_connection') == '512KB' or states('sensor.fold_4_wifi_bssid') in ['9c:9d:7e:75:21:a1', '9c:9d:7e:75:21:a0']))) or ((not (states('sensor.fold_4_public_ip_address') == '151.251.104.115' or (((states('sensor.fold_4_wifi_connection') == '512KB' or states('sensor.fold_4_wifi_bssid') in ['9c:9d:7e:75:21:a1', '9c:9d:7e:75:21:a0']) or ((states('sensor.iphone15promax_connection_type') == 'Wi-Fi') and (states('sensor.iphone15promax_ssid') == '512KB' or states('sensor.iphone15promax_bssid') in ['9c:9d:7e:75:21:a1', '9c:9d:7e:75:21:a0']))) and (states('weather.forecast_home') not in ['unknown', 'unavailable', 'none'] and (as_timestamp(now()) - as_timestamp(states.weather.forecast_home.last_updated, 0)) < 7200)))) and ((states('sensor.fold_4_wifi_connection') == '512KB' or states('sensor.fold_4_wifi_bssid') in ['9c:9d:7e:75:21:a1', '9c:9d:7e:75:21:a0']) or (states('device_tracker.fold_4') | lower == 'home') or is_state('input_boolean.presence_krasimir_koev', 'on'))) }}"
+            }
+          ]
+          sequence = [
+            {
+              service = "input_boolean.turn_on"
+              target = {
+                entity_id = "input_boolean.presence_krasimir_koev"
+              }
+            }
+          ]
+        }
+      ]
+      default = [
+        {
+          service = "input_boolean.turn_off"
+          target = {
+            entity_id = "input_boolean.presence_krasimir_koev"
+          }
+        }
+      ]
+    },
+    {
+      choose = [
+        {
+          conditions = [
+            {
+              condition = "template"
+              value_template = "{{ ((states('sensor.fold_4_public_ip_address') == '151.251.104.115' or (((states('sensor.fold_4_wifi_connection') == '512KB' or states('sensor.fold_4_wifi_bssid') in ['9c:9d:7e:75:21:a1', '9c:9d:7e:75:21:a0']) or ((states('sensor.iphone15promax_connection_type') == 'Wi-Fi') and (states('sensor.iphone15promax_ssid') == '512KB' or states('sensor.iphone15promax_bssid') in ['9c:9d:7e:75:21:a1', '9c:9d:7e:75:21:a0']))) and (states('weather.forecast_home') not in ['unknown', 'unavailable', 'none'] and (as_timestamp(now()) - as_timestamp(states.weather.forecast_home.last_updated, 0)) < 7200))) and ((states('device_tracker.iphone') | lower == 'home') or ((states('sensor.iphone15promax_connection_type') == 'Wi-Fi') and (states('sensor.iphone15promax_ssid') == '512KB' or states('sensor.iphone15promax_bssid') in ['9c:9d:7e:75:21:a1', '9c:9d:7e:75:21:a0'])))) or ((not (states('sensor.fold_4_public_ip_address') == '151.251.104.115' or (((states('sensor.fold_4_wifi_connection') == '512KB' or states('sensor.fold_4_wifi_bssid') in ['9c:9d:7e:75:21:a1', '9c:9d:7e:75:21:a0']) or ((states('sensor.iphone15promax_connection_type') == 'Wi-Fi') and (states('sensor.iphone15promax_ssid') == '512KB' or states('sensor.iphone15promax_bssid') in ['9c:9d:7e:75:21:a1', '9c:9d:7e:75:21:a0']))) and (states('weather.forecast_home') not in ['unknown', 'unavailable', 'none'] and (as_timestamp(now()) - as_timestamp(states.weather.forecast_home.last_updated, 0)) < 7200)))) and (((states('sensor.iphone15promax_connection_type') == 'Wi-Fi') and (states('sensor.iphone15promax_ssid') == '512KB' or states('sensor.iphone15promax_bssid') in ['9c:9d:7e:75:21:a1', '9c:9d:7e:75:21:a0'])) or (states('device_tracker.iphone') | lower == 'home') or is_state('input_boolean.presence_ema_yosifova', 'on'))) }}"
+            }
+          ]
+          sequence = [
+            {
+              service = "input_boolean.turn_on"
+              target = {
+                entity_id = "input_boolean.presence_ema_yosifova"
+              }
+            }
+          ]
+        }
+      ]
+      default = [
+        {
+          service = "input_boolean.turn_off"
+          target = {
+            entity_id = "input_boolean.presence_ema_yosifova"
+          }
+        }
+      ]
+    },
+    {
+      choose = [
+        {
+          conditions = [
+            {
+              condition = "template"
+              value_template = "{{ is_state('input_boolean.presence_krasimir_koev', 'on') or is_state('input_boolean.presence_ema_yosifova', 'on') or is_state('binary_sensor.motion01', 'on') or is_state('binary_sensor.motion03', 'on') or is_state('binary_sensor.motion04spalniam', 'on') }}"
+            }
+          ]
+          sequence = [
+            {
+              service = "input_boolean.turn_on"
+              target = {
+                entity_id = "input_boolean.someone_home"
+              }
+            }
+          ]
+        }
+      ]
+      default = [
+        {
+          service = "input_boolean.turn_off"
+          target = {
+            entity_id = "input_boolean.someone_home"
+          }
+        }
+      ]
+    }
+  ])
+}

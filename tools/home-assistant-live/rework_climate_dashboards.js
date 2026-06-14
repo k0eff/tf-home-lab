@@ -1,3 +1,5 @@
+const fs = require("fs");
+const path = require("path");
 const { connectWs, rest } = require("./ha_ws_util");
 
 const rooms = {
@@ -191,6 +193,15 @@ Automation: \`${room.automation}\`
 Main sensor: \`${room.tempSensors[0]}\``;
 }
 
+function energyMarkdown(room) {
+  const fileName = room.key === "livingr" ? "livingr_energy_table_pinned.md" : "bedroomb_energy_table.md";
+  const filePath = path.join(__dirname, fileName);
+  if (fs.existsSync(filePath)) return fs.readFileSync(filePath, "utf8").trim();
+  return `### ${room.title} AC electricity
+
+Run \`tools/home-assistant-live/sync_room_energy_tables.js\` to generate the daily table from \`${room.energy}\` history.`;
+}
+
 function roomView(room) {
   const h = room.helpers;
   const nightEntities = room.title === "BedroomB"
@@ -276,6 +287,11 @@ function roomView(room) {
         type: "entities",
         title: "Electricity",
         entities: [room.energy, room.power, "sensor.total_consumption_power"],
+      },
+      {
+        type: "markdown",
+        title: `${room.title} AC electricity`,
+        content: energyMarkdown(room),
       },
       {
         type: "history-graph",
