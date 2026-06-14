@@ -819,6 +819,77 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
   ])
 }
 
+resource "homeassistant_automation" "livingr_program_delayed_toggle" {
+  alias       = "[TEST] AirCon - LivingR - delayed program toggle"
+  description = "Debounces LivingR program on/off requests from input_boolean.livingr_program_requested. The dashboard button changes only the requested state; after 5 seconds this automation applies the last requested state to the real comfort-band automation."
+  mode        = "restart"
+
+  trigger = jsonencode([
+    {
+      platform  = "state"
+      entity_id = "input_boolean.livingr_program_requested"
+    }
+  ])
+
+  condition = jsonencode([
+    {
+      condition      = "template"
+      value_template = "{{ states('input_boolean.livingr_program_requested') in ['on', 'off'] }}"
+    }
+  ])
+
+  action = jsonencode([
+    {
+      delay = {
+        seconds = 5
+      }
+    },
+    {
+      choose = [
+        {
+          alias = "Apply requested on state"
+          conditions = [
+            {
+              condition = "state"
+              entity_id = "input_boolean.livingr_program_requested"
+              state     = "on"
+            }
+          ]
+          sequence = [
+            {
+              service = "automation.turn_on"
+              target = {
+                entity_id = "automation.test_aircon_livingr_room_sensor_comfort_band"
+              }
+            }
+          ]
+        },
+        {
+          alias = "Apply requested off state"
+          conditions = [
+            {
+              condition = "state"
+              entity_id = "input_boolean.livingr_program_requested"
+              state     = "off"
+            }
+          ]
+          sequence = [
+            {
+              service = "automation.turn_off"
+              target = {
+                entity_id = "automation.test_aircon_livingr_room_sensor_comfort_band"
+              }
+              data = {
+                stop_actions = false
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ])
+}
+
 locals {
   bedroomb_climate_test_setup = <<EOT
 {% set primary_room = states('sensor.miaomiaoce_t2_5249_temperature_humidity_sensor') | float(none) %}
@@ -1368,6 +1439,77 @@ resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_ba
                 name      = "[TEST] BedroomB climate comfort band"
                 message   = "${local.bedroomb_climate_test_setup}\nWinter heating stopped: target reached or outside mode changed; ${local.bedroomb_climate_test_log_suffix}"
                 entity_id = "climate.v357_spalniag_2"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ])
+}
+
+resource "homeassistant_automation" "bedroomb_program_delayed_toggle" {
+  alias       = "[TEST] AirCon - BedroomB - delayed program toggle"
+  description = "Debounces BedroomB program on/off requests from input_boolean.bedroomb_program_requested. The dashboard button changes only the requested state; after 5 seconds this automation applies the last requested state to the real comfort-band automation."
+  mode        = "restart"
+
+  trigger = jsonencode([
+    {
+      platform  = "state"
+      entity_id = "input_boolean.bedroomb_program_requested"
+    }
+  ])
+
+  condition = jsonencode([
+    {
+      condition      = "template"
+      value_template = "{{ states('input_boolean.bedroomb_program_requested') in ['on', 'off'] }}"
+    }
+  ])
+
+  action = jsonencode([
+    {
+      delay = {
+        seconds = 5
+      }
+    },
+    {
+      choose = [
+        {
+          alias = "Apply requested on state"
+          conditions = [
+            {
+              condition = "state"
+              entity_id = "input_boolean.bedroomb_program_requested"
+              state     = "on"
+            }
+          ]
+          sequence = [
+            {
+              service = "automation.turn_on"
+              target = {
+                entity_id = "automation.test_aircon_bedroomb_room_sensor_comfort_band"
+              }
+            }
+          ]
+        },
+        {
+          alias = "Apply requested off state"
+          conditions = [
+            {
+              condition = "state"
+              entity_id = "input_boolean.bedroomb_program_requested"
+              state     = "off"
+            }
+          ]
+          sequence = [
+            {
+              service = "automation.turn_off"
+              target = {
+                entity_id = "automation.test_aircon_bedroomb_room_sensor_comfort_band"
+              }
+              data = {
+                stop_actions = false
               }
             }
           ]

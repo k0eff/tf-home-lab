@@ -202,3 +202,13 @@ import {
   to = homeassistant_automation.test_aircon_bedroomb_room_sensor_comfort_band
   id = "1770077000021"
 }
+
+import {
+  to = homeassistant_automation.livingr_program_delayed_toggle
+  id = "1770077000031"
+}
+
+import {
+  to = homeassistant_automation.bedroomb_program_delayed_toggle
+  id = "1770077000032"
+}
