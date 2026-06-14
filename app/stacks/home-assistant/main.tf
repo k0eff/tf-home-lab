@@ -338,14 +338,26 @@ locals {
 {% set cooling_stop_room_temp = states('input_number.livingr_cooling_stop_room_temp') | float(0) %}
 {% set error = effective - target if effective is not none and target is not none else none %}
 {% set dynamic_setpoint = ([16, [31, ((ac_temp - error) * 2) | round(0) / 2] | min] | max) if ac_temp is not none and error is not none else none %}
+{% set livingr_night_start_value = states('input_datetime.livingr_night_start') if states('input_datetime.livingr_night_start') not in ['unknown', 'unavailable', 'none'] else '00:30:00' %}
+{% set livingr_day_start_value = states('input_datetime.livingr_day_start') if states('input_datetime.livingr_day_start') not in ['unknown', 'unavailable', 'none'] else '08:30:00' %}
+{% set livingr_air_clean_start_value = states('input_datetime.livingr_air_clean_start') if states('input_datetime.livingr_air_clean_start') not in ['unknown', 'unavailable', 'none'] else '03:00:00' %}
+{% set livingr_air_clean_end_value = states('input_datetime.livingr_air_clean_end') if states('input_datetime.livingr_air_clean_end') not in ['unknown', 'unavailable', 'none'] else '06:00:00' %}
+{% set livingr_night_start_parts = livingr_night_start_value.split(':') %}
+{% set livingr_day_start_parts = livingr_day_start_value.split(':') %}
+{% set livingr_air_clean_start_parts = livingr_air_clean_start_value.split(':') %}
+{% set livingr_air_clean_end_parts = livingr_air_clean_end_value.split(':') %}
+{% set night_start_minutes = (livingr_night_start_parts[0] | int) * 60 + (livingr_night_start_parts[1] | int) %}
+{% set day_start_minutes = (livingr_day_start_parts[0] | int) * 60 + (livingr_day_start_parts[1] | int) %}
+{% set air_clean_start_minutes = (livingr_air_clean_start_parts[0] | int) * 60 + (livingr_air_clean_start_parts[1] | int) %}
+{% set air_clean_end_minutes = (livingr_air_clean_end_parts[0] | int) * 60 + (livingr_air_clean_end_parts[1] | int) %}
 {% set minutes_now = now().hour * 60 + now().minute %}
-{% set night_sleep_window = minutes_now >= 30 and minutes_now < 510 %}
-{% set night_air_clean_window = minutes_now >= 180 and minutes_now < 360 %}
+{% set night_sleep_window = (minutes_now >= night_start_minutes and minutes_now < day_start_minutes) if night_start_minutes < day_start_minutes else (minutes_now >= night_start_minutes or minutes_now < day_start_minutes) %}
+{% set night_air_clean_window = (minutes_now >= air_clean_start_minutes and minutes_now < air_clean_end_minutes) if air_clean_start_minutes < air_clean_end_minutes else (minutes_now >= air_clean_start_minutes or minutes_now < air_clean_end_minutes) %}
 {% set night_window = night_air_clean_window %}
-{% set day_air_clean_window = now().hour >= 8 and now().hour <= 23 %}
+{% set day_air_clean_window = minutes_now >= day_start_minutes and minutes_now <= 1439 %}
 EOT
 
-  livingr_climate_test_log_suffix = "mode={{ climate_mode }}, night_sleep={{ night_sleep_window }}, night_air_clean={{ night_air_clean_window }}, outside_source={{ outside_source }}, outside={{ outside }}, venti_raw={{ outside_venti_raw }}, venti_battery={{ outside_venti_battery }}%, weather={{ outside_weather }}, source={{ source }}, room={{ room }}, room_battery={{ battery }}%, ac_sensor={{ ac_temp }}, target={{ target }}, start_delta={{ cooling_start_delta }}, learned_overshoot={{ learned_overshoot }}, stop_room={{ cooling_stop_room_temp }}, fan={{ cooling_fan_mode }}, cooldown={{ coil_cooldown_minutes }}m, error={{ error | round(2) if error is not none else 'none' }}, setpoint={{ dynamic_setpoint }}"
+  livingr_climate_test_log_suffix = "mode={{ climate_mode }}, night_sleep={{ night_sleep_window }}, night_air_clean={{ night_air_clean_window }}, outside_source={{ outside_source }}, outside={{ outside }}, venti_raw={{ outside_venti_raw }}, venti_battery={{ outside_venti_battery }}%, weather={{ outside_weather }}, source={{ source }}, room={{ room }}, room_battery={{ battery }}%, ac_sensor={{ ac_temp }}, target={{ target }}, night_start={{ livingr_night_start_value }}, day_start={{ livingr_day_start_value }}, air_clean={{ livingr_air_clean_start_value }}-{{ livingr_air_clean_end_value }}, start_delta={{ cooling_start_delta }}, learned_overshoot={{ learned_overshoot }}, stop_room={{ cooling_stop_room_temp }}, fan={{ cooling_fan_mode }}, cooldown={{ coil_cooldown_minutes }}m, error={{ error | round(2) if error is not none else 'none' }}, setpoint={{ dynamic_setpoint }}"
 }
 
 resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_band" {
@@ -835,11 +847,23 @@ locals {
 {% set winter_start_delta = states('input_number.bedroomb_winter_start_delta') | float(0.5) %}
 {% set coil_cooldown_minutes = states('input_number.bedroomb_coil_cooldown_minutes') | float(7) %}
 {% set cooling_fan_mode = states('input_number.bedroomb_cooling_fan_mode') | int(2) %}
+{% set bedroomb_night_start_value = states('input_datetime.bedroomb_night_start') if states('input_datetime.bedroomb_night_start') not in ['unknown', 'unavailable', 'none'] else '00:30:00' %}
+{% set bedroomb_day_start_value = states('input_datetime.bedroomb_day_start') if states('input_datetime.bedroomb_day_start') not in ['unknown', 'unavailable', 'none'] else '08:30:00' %}
+{% set bedroomb_air_clean_start_value = states('input_datetime.bedroomb_air_clean_start') if states('input_datetime.bedroomb_air_clean_start') not in ['unknown', 'unavailable', 'none'] else '03:00:00' %}
+{% set bedroomb_air_clean_end_value = states('input_datetime.bedroomb_air_clean_end') if states('input_datetime.bedroomb_air_clean_end') not in ['unknown', 'unavailable', 'none'] else '06:00:00' %}
+{% set bedroomb_night_start_parts = bedroomb_night_start_value.split(':') %}
+{% set bedroomb_day_start_parts = bedroomb_day_start_value.split(':') %}
+{% set bedroomb_air_clean_start_parts = bedroomb_air_clean_start_value.split(':') %}
+{% set bedroomb_air_clean_end_parts = bedroomb_air_clean_end_value.split(':') %}
+{% set night_start_minutes = (bedroomb_night_start_parts[0] | int) * 60 + (bedroomb_night_start_parts[1] | int) %}
+{% set day_start_minutes = (bedroomb_day_start_parts[0] | int) * 60 + (bedroomb_day_start_parts[1] | int) %}
+{% set air_clean_start_minutes = (bedroomb_air_clean_start_parts[0] | int) * 60 + (bedroomb_air_clean_start_parts[1] | int) %}
+{% set air_clean_end_minutes = (bedroomb_air_clean_end_parts[0] | int) * 60 + (bedroomb_air_clean_end_parts[1] | int) %}
 {% set minutes_now = now().hour * 60 + now().minute %}
-{% set night_sleep_window = minutes_now >= 30 and minutes_now < 510 %}
-{% set night_air_clean_window = minutes_now >= 180 and minutes_now < 360 %}
+{% set night_sleep_window = (minutes_now >= night_start_minutes and minutes_now < day_start_minutes) if night_start_minutes < day_start_minutes else (minutes_now >= night_start_minutes or minutes_now < day_start_minutes) %}
+{% set night_air_clean_window = (minutes_now >= air_clean_start_minutes and minutes_now < air_clean_end_minutes) if air_clean_start_minutes < air_clean_end_minutes else (minutes_now >= air_clean_start_minutes or minutes_now < air_clean_end_minutes) %}
 {% set night_window = night_air_clean_window %}
-{% set day_air_clean_window = now().hour >= 8 and now().hour <= 23 %}
+{% set day_air_clean_window = minutes_now >= day_start_minutes and minutes_now <= 1439 %}
 {% if outside_venti_battery > outside_sensor_min_battery and outside_venti_raw is not none %}
   {% set outside_source = 'venti_in_adjusted' %}
   {% set outside = outside_venti_raw - outside_venti_offset %}
@@ -878,7 +902,7 @@ locals {
 {% set dynamic_setpoint = ([16, [31, ((ac_temp - error) * 2) | round(0) / 2] | min] | max) if ac_temp is not none and error is not none else none %}
 EOT
 
-  bedroomb_climate_test_log_suffix = "mode={{ climate_mode }}, night_sleep={{ night_sleep_window }}, night_air_clean={{ night_air_clean_window }}, outside_source={{ outside_source }}, outside={{ outside }}, venti_raw={{ outside_venti_raw }}, venti_battery={{ outside_venti_battery }}%, weather={{ outside_weather }}, source={{ source }}, primary_room={{ primary_room }}, primary_battery={{ primary_battery }}%, ceiling_room={{ secondary_room }}, ceiling_battery={{ secondary_battery }}%, source_room={{ room }}, source_battery={{ battery }}%, ac_sensor={{ ac_temp }}, target={{ target }}, cooling_delta={{ active_cooling_start_delta }}, winter_delta={{ active_winter_start_delta }}, day_cooling_delta={{ cooling_start_delta }}, night_cooling_delta={{ night_cooling_start_delta }}, learned_overshoot={{ learned_overshoot }}, stop_room={{ cooling_stop_room_temp }}, fan={{ cooling_fan_mode }}, cooldown={{ coil_cooldown_minutes }}m, error={{ error | round(2) if error is not none else 'none' }}, setpoint={{ dynamic_setpoint }}"
+  bedroomb_climate_test_log_suffix = "mode={{ climate_mode }}, night_sleep={{ night_sleep_window }}, night_air_clean={{ night_air_clean_window }}, outside_source={{ outside_source }}, outside={{ outside }}, venti_raw={{ outside_venti_raw }}, venti_battery={{ outside_venti_battery }}%, weather={{ outside_weather }}, source={{ source }}, primary_room={{ primary_room }}, primary_battery={{ primary_battery }}%, ceiling_room={{ secondary_room }}, ceiling_battery={{ secondary_battery }}%, source_room={{ room }}, source_battery={{ battery }}%, ac_sensor={{ ac_temp }}, target={{ target }}, night_start={{ bedroomb_night_start_value }}, day_start={{ bedroomb_day_start_value }}, air_clean={{ bedroomb_air_clean_start_value }}-{{ bedroomb_air_clean_end_value }}, cooling_delta={{ active_cooling_start_delta }}, winter_delta={{ active_winter_start_delta }}, day_cooling_delta={{ cooling_start_delta }}, night_cooling_delta={{ night_cooling_start_delta }}, learned_overshoot={{ learned_overshoot }}, stop_room={{ cooling_stop_room_temp }}, fan={{ cooling_fan_mode }}, cooldown={{ coil_cooldown_minutes }}m, error={{ error | round(2) if error is not none else 'none' }}, setpoint={{ dynamic_setpoint }}"
 }
 
 resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_band" {
