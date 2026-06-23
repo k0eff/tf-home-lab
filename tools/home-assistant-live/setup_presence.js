@@ -2,6 +2,8 @@ const { connectWs, rest } = require("./ha_ws_util");
 
 const AUTOMATION_ID = "1770077000051";
 const AUTOMATION_ALIAS = "Presence - fused home detection";
+const TAG_AWAY_AUTOMATION_ID = "168263075795099";
+const TAG_HOME_AUTOMATION_ID = "168262953150899";
 const DASHBOARD_PATH = "my-dash";
 const DEFAULT_VIEW_PATH = "default";
 const PRESENCE_VIEW_PATH = "presence";
@@ -33,6 +35,16 @@ const HELPERS = [
   },
 ];
 
+const DATETIME_HELPERS = [
+  {
+    entity_id: "input_datetime.presence_away_tag_until",
+    name: "Presence Away Tag Until",
+    icon: "mdi:tag-off",
+    has_date: true,
+    has_time: true,
+  },
+];
+
 const WATCH_ENTITIES = [
   "device_tracker.fold_4",
   "sensor.fold_4_wifi_connection",
@@ -42,6 +54,7 @@ const WATCH_ENTITIES = [
   "sensor.iphone15promax_ssid",
   "sensor.iphone15promax_bssid",
   "sensor.iphone15promax_connection_type",
+  "input_datetime.presence_away_tag_until",
   "weather.forecast_home",
   "binary_sensor.motion01",
   "binary_sensor.motion03",
@@ -53,13 +66,16 @@ const FOLD_GPS_HOME = "(states('device_tracker.fold_4') | lower == 'home')";
 const EMA_GPS_HOME = "(states('device_tracker.iphone') | lower == 'home')";
 const FOLD_WIFI_HOME = `(states('sensor.fold_4_wifi_connection') == '${HOME_SSID}' or states('sensor.fold_4_wifi_bssid') in ${BSSID_LIST})`;
 const EMA_WIFI_HOME = `((states('sensor.iphone15promax_connection_type') == 'Wi-Fi') and (states('sensor.iphone15promax_ssid') == '${HOME_SSID}' or states('sensor.iphone15promax_bssid') in ${BSSID_LIST}))`;
+const FOLD_LOCAL_AWAY_30M = `((not (${FOLD_WIFI_HOME})) and (as_timestamp(now()) - ([as_timestamp(states.sensor.fold_4_wifi_connection.last_changed, 0), as_timestamp(states.sensor.fold_4_wifi_bssid.last_changed, 0)] | max)) > 1800)`;
+const EMA_LOCAL_AWAY_30M = `((not (${EMA_WIFI_HOME})) and (states('sensor.iphone15promax_connection_type') in ['Cellular', 'Not Connected'] or states('sensor.iphone15promax_ssid') == 'Not Connected' or states('sensor.iphone15promax_bssid') == 'Not Connected') and (as_timestamp(now()) - ([as_timestamp(states.sensor.iphone15promax_connection_type.last_changed, 0), as_timestamp(states.sensor.iphone15promax_ssid.last_changed, 0), as_timestamp(states.sensor.iphone15promax_bssid.last_changed, 0)] | max)) > 1800)`;
+const TAG_AWAY_ACTIVE = `(states('input_datetime.presence_away_tag_until') not in ['unknown', 'unavailable', 'none'] and as_timestamp(states('input_datetime.presence_away_tag_until'), 0) > as_timestamp(now()))`;
 const ANY_HOME_WIFI = `(${FOLD_WIFI_HOME} or ${EMA_WIFI_HOME})`;
 const WEATHER_FRESH = "(states('weather.forecast_home') not in ['unknown', 'unavailable', 'none'] and (as_timestamp(now()) - as_timestamp(states.weather.forecast_home.last_updated, 0)) < 7200)";
 const INTERNET_UP = `(states('sensor.fold_4_public_ip_address') == '${HOME_PUBLIC_IP}' or (${ANY_HOME_WIFI} and ${WEATHER_FRESH}))`;
-const KRASIMIR_HOME_UP = `(${FOLD_GPS_HOME} or ${FOLD_WIFI_HOME})`;
-const EMA_HOME_UP = `(${EMA_GPS_HOME} or ${EMA_WIFI_HOME})`;
-const KRASIMIR_HOME_DOWN = `(${FOLD_WIFI_HOME} or ${FOLD_GPS_HOME} or is_state('input_boolean.presence_krasimir_koev', 'on'))`;
-const EMA_HOME_DOWN = `(${EMA_WIFI_HOME} or ${EMA_GPS_HOME} or is_state('input_boolean.presence_ema_yosifova', 'on'))`;
+const KRASIMIR_HOME_UP = `((not (${TAG_AWAY_ACTIVE})) and (${FOLD_WIFI_HOME} or ${FOLD_GPS_HOME}))`;
+const EMA_HOME_UP = `((not (${TAG_AWAY_ACTIVE})) and (${EMA_WIFI_HOME} or ${EMA_GPS_HOME}))`;
+const KRASIMIR_HOME_DOWN = `((not (${TAG_AWAY_ACTIVE})) and (${FOLD_WIFI_HOME} or ${FOLD_GPS_HOME} or is_state('input_boolean.presence_krasimir_koev', 'on')))`;
+const EMA_HOME_DOWN = `((not (${TAG_AWAY_ACTIVE})) and (${EMA_WIFI_HOME} or ${EMA_GPS_HOME} or is_state('input_boolean.presence_ema_yosifova', 'on')))`;
 const MOTION_PRESENT = "(is_state('binary_sensor.motion01', 'on') or is_state('binary_sensor.motion03', 'on') or is_state('binary_sensor.motion04spalniam', 'on'))";
 
 function helperId(entityId) {
@@ -120,7 +136,7 @@ function presenceAutomation() {
       ),
       booleanSetter(
         "input_boolean.someone_home",
-        "(is_state('input_boolean.presence_krasimir_koev', 'on') or is_state('input_boolean.presence_ema_yosifova', 'on') or " + MOTION_PRESENT + ")",
+        `(not (${TAG_AWAY_ACTIVE}) and (is_state('input_boolean.presence_krasimir_koev', 'on') or is_state('input_boolean.presence_ema_yosifova', 'on') or ${MOTION_PRESENT}))`,
       ),
     ],
   };
@@ -159,7 +175,9 @@ function detailedMetricsCard() {
 | BSSID | {{ states('sensor.fold_4_wifi_bssid') }} | {{ states('sensor.iphone15promax_bssid') }} |
 | Public IP | {{ states('sensor.fold_4_public_ip_address') }} | n/a |
 | Connection type | n/a | {{ states('sensor.iphone15promax_connection_type') }} |
+| Local away >30m | {% if ${FOLD_LOCAL_AWAY_30M} %}yes{% else %}no{% endif %} | {% if ${EMA_LOCAL_AWAY_30M} %}yes{% else %}no{% endif %} |
 
+**Away tag force window:** {% if ${TAG_AWAY_ACTIVE} %}active until {{ states('input_datetime.presence_away_tag_until') }}{% else %}inactive{% endif %}<br>
 **Motion fallback:** motion01={{ states('binary_sensor.motion01') }}, motion03={{ states('binary_sensor.motion03') }}, motion04spalniam={{ states('binary_sensor.motion04spalniam') }}  
 **Weather freshness fallback:** {% if ${WEATHER_FRESH} %}🟢 fresh{% else %}🔴 stale{% endif %} · weather={{ states('weather.forecast_home') }}`,
   };
@@ -212,6 +230,46 @@ function presenceView() {
   };
 }
 
+function awayTagSetUntilAction() {
+  return {
+    service: "input_datetime.set_datetime",
+    target: { entity_id: "input_datetime.presence_away_tag_until" },
+    data: {
+      datetime: "{{ (now() + timedelta(minutes=60)).strftime('%Y-%m-%d %H:%M:%S') }}",
+    },
+  };
+}
+
+function homeTagClearAwayAction() {
+  return {
+    service: "input_datetime.set_datetime",
+    target: { entity_id: "input_datetime.presence_away_tag_until" },
+    data: {
+      datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}",
+    },
+  };
+}
+
+function isAwayTagUntilAction(action) {
+  return action?.service === "input_datetime.set_datetime"
+    && action?.target?.entity_id === "input_datetime.presence_away_tag_until";
+}
+
+async function patchTagAutomation(id, actionFactory) {
+  const config = await rest(`/api/config/automation/config/${id}`);
+  const actions = Array.isArray(config.action) ? config.action : [];
+  config.action = [
+    actionFactory(),
+    ...actions.filter((action) => !isAwayTagUntilAction(action)),
+  ];
+  await rest(`/api/config/automation/config/${id}`, "POST", config);
+  return {
+    id,
+    alias: config.alias,
+    action_count: config.action.length,
+  };
+}
+
 function stableCardSignature(card) {
   return JSON.stringify(card);
 }
@@ -245,6 +303,32 @@ async function ensureInputBooleans(ws) {
     const result = current
       ? await ws.request({ ...payload, type: "input_boolean/update", input_boolean_id: helperId(helper.entity_id) })
       : await ws.request({ ...payload, type: "input_boolean/create" });
+    if (!result.success) throw new Error(JSON.stringify(result));
+    changed.push(`${current ? "updated" : "created"} ${helper.entity_id}`);
+  }
+
+  return changed;
+}
+
+async function ensureInputDatetimes(ws) {
+  let id = 200;
+  const list = await ws.request({ id: ++id, type: "input_datetime/list" });
+  if (!list.success) throw new Error(JSON.stringify(list));
+  const existing = new Map(list.result.map((item) => [item.id, item]));
+  const changed = [];
+
+  for (const helper of DATETIME_HELPERS) {
+    const current = existing.get(helperId(helper.entity_id));
+    const payload = {
+      id: ++id,
+      name: helper.name,
+      icon: helper.icon,
+      has_date: helper.has_date,
+      has_time: helper.has_time,
+    };
+    const result = current
+      ? await ws.request({ ...payload, type: "input_datetime/update", input_datetime_id: helperId(helper.entity_id) })
+      : await ws.request({ ...payload, type: "input_datetime/create" });
     if (!result.success) throw new Error(JSON.stringify(result));
     changed.push(`${current ? "updated" : "created"} ${helper.entity_id}`);
   }
@@ -299,10 +383,13 @@ async function patchDashboard(ws) {
 (async () => {
   const ws = await connectWs();
   const helperChanges = await ensureInputBooleans(ws);
+  const datetimeChanges = await ensureInputDatetimes(ws);
   const dashboard = await patchDashboard(ws);
   ws.close();
 
   await rest(`/api/config/automation/config/${AUTOMATION_ID}`, "POST", presenceAutomation());
+  const tagAway = await patchTagAutomation(TAG_AWAY_AUTOMATION_ID, awayTagSetUntilAction);
+  const tagHome = await patchTagAutomation(TAG_HOME_AUTOMATION_ID, homeTagClearAwayAction);
   await rest("/api/services/automation/reload", "POST", {});
   const automationEntityId = `automation.${slugify(AUTOMATION_ALIAS)}`;
   await rest("/api/services/automation/turn_on", "POST", {
@@ -316,6 +403,7 @@ async function patchDashboard(ws) {
   const states = await rest("/api/states");
   const summaryEntities = new Set([
     ...HELPERS.map((helper) => helper.entity_id),
+    ...DATETIME_HELPERS.map((helper) => helper.entity_id),
     automationEntityId,
   ]);
   const summary = Object.fromEntries(
@@ -326,6 +414,9 @@ async function patchDashboard(ws) {
 
   console.log(JSON.stringify({
     helperChanges,
+    datetimeChanges,
+    tagAway,
+    tagHome,
     dashboard,
     summary,
   }, null, 2));

@@ -21,6 +21,33 @@ source protected/main.sh prod home-assistant >/dev/null
 HA_BASE=${HA_URL%/} /Users/krasi/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node tools/home-assistant-live/<script>.js
 ```
 
+## Автоматични refresh-и
+
+### AC energy tables
+
+`sync_room_energy_tables.js` генерира статични markdown карти в `my-dash`, затова трябва да се пуска по график.
+
+Tracked launchd files:
+
+- `run_energy_table_sync.sh`
+  - зарежда `protected/main.sh prod home-assistant`
+  - пуска `sync_room_energy_tables.js`
+- `com.krasi.ha-energy-table-refresh.plist`
+  - daily refresh в 00:10 Europe/Sofia local machine time
+  - `RunAtLoad=true`, за да refresh-не и при login/bootstrap
+  - логове: `/tmp/ha-energy-table-refresh.out.log`, `/tmp/ha-energy-table-refresh.err.log` и `/tmp/ha-energy-table-refresh.wrapper.log`
+
+Install/update:
+
+```bash
+chmod +x tools/home-assistant-live/run_energy_table_sync.sh
+mkdir -p ~/Library/LaunchAgents
+cp tools/home-assistant-live/com.krasi.ha-energy-table-refresh.plist ~/Library/LaunchAgents/
+launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.krasi.ha-energy-table-refresh.plist 2>/dev/null || true
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.krasi.ha-energy-table-refresh.plist
+launchctl kickstart -k gui/$(id -u)/com.krasi.ha-energy-table-refresh
+```
+
 Всички `.js` скриптове тук:
 
 - нямат subcommands
@@ -70,6 +97,11 @@ HA_BASE=${HA_URL%/} /Users/krasi/.cache/codex-runtimes/codex-primary-runtime/dep
   - writes: да
   - subcommands: няма
   - options: няма
+- `disable_legacy_livingr_fan_automations.js`
+  - изключва legacy LivingR fan motion automation-ите, които се засичат с новия room-sensor comfort loop
+  - writes: да
+  - subcommands: няма
+  - options: няма
 - `fix_live_template_stray_brace.js`
   - маха stray template символ/brace в live automation config
   - writes: да
@@ -92,6 +124,16 @@ HA_BASE=${HA_URL%/} /Users/krasi/.cache/codex-runtimes/codex-primary-runtime/dep
   - options: няма
 - `patch_livingr_live_conditions.js`
   - patch-ва LivingR live automation condition логика
+  - writes: да
+  - subcommands: няма
+  - options: няма
+- `patch_room_motion_fan_restore.js`
+  - patch-ва LivingR и BedroomB live comfort automation-ите така, че motion да връща occupied fan profile и по време на `cool`, не само при `fan_only`, и мести cooling fan настройката по-рано в summer start sequence
+  - writes: да
+  - subcommands: няма
+  - options: няма
+- `rearm_climate_comfort_automations.js`
+  - reload-ва, turn_off/turn_on-ва и re-trigger-ва LivingR и BedroomB comfort automation-ите, когато runtime trigger loop-ът е заседнал и `last_triggered` не се обновява
   - writes: да
   - subcommands: няма
   - options: няма
@@ -120,13 +162,28 @@ HA_BASE=${HA_URL%/} /Users/krasi/.cache/codex-runtimes/codex-primary-runtime/dep
   - writes: да
   - subcommands: няма
   - options: няма
+- `setup_livingr_night_cooling_guard.js`
+  - създава `input_boolean.livingr_allow_night_cooling`, patch-ва LivingR comfort automation-а да блокира нощното cooling when disabled, и добавя Night control в LivingR dashboard-а
+  - writes: да
+  - subcommands: няма
+  - options: няма
 - `setup_presence.js`
-  - създава fused presence helper-и, patch-ва presence automation и добавя status/diagnostics карти в `my-dash`
+  - създава fused presence helper-и, patch-ва presence automation, показва local-away >30m диагностика, връзва V2 Away/Home tag към 60m force-away прозорец и добавя status/diagnostics карти в `my-dash`
   - writes: да
   - subcommands: няма
   - options: няма
 - `sync_room_energy_tables.js`
   - генерира дневни kWh markdown таблици за LivingR и BedroomB от history API и ги patch-ва в room dashboard-ите
+  - writes: да
+  - subcommands: няма
+  - options: няма
+- `sync_climate_setup_templates.js`
+  - синхронизира live climate setup template-ите за LivingR и BedroomB с актуалната логика за time windows, target selection и sensor fallback, после re-arm-ва двата comfort automation-а
+  - writes: да
+  - subcommands: няма
+  - options: няма
+- `tune_livingr_cooling_band.js`
+  - настройва LivingR summer cooling start band към по-тесен диапазон (`target + 0.3°C`) и trigger-ва comfort automation-а за незабавна проверка
   - writes: да
   - subcommands: няма
   - options: няма
@@ -218,6 +275,26 @@ HA_BASE=${HA_URL%/} /Users/krasi/.cache/codex-runtimes/codex-primary-runtime/dep
   - options: няма
 - `investigate_livingr_accidental_off.js`
   - разследва кога и защо LivingR е бил изключен
+  - writes: не
+  - subcommands: няма
+  - options: няма
+- `investigate_livingr_fan_behavior.js`
+  - разследва LivingR fan behavior: текущи state-ове, релевантни automation branch-ове и последна история на `climate.hol_2` и `motion01`
+  - writes: не
+  - subcommands: няма
+  - options: няма
+- `investigate_bedroomb_manual_override_shutdown.js`
+  - разследва защо BedroomB климатикът е изключил по време на manual override: текущи state-ове, history, logbook и live automation references за comfort/manual override
+  - writes: не
+  - subcommands: няма
+  - options: няма
+- `investigate_bedroomb_comfort_math.js`
+  - render-ва текущата BedroomB comfort-band математика: избран sensor, season, target, delta, dynamic setpoint и дали алгоритъмът очаква cooling/cooldown
+  - writes: не
+  - subcommands: няма
+  - options: няма
+- `investigate_presence_ema_departure.js`
+  - разследва Presence history за Ema от 08:30 до момента: GPS/Wi-Fi, fused helper-и, internet helper, motion, Tag Away/Home logbook и live config summary
   - writes: не
   - subcommands: няма
   - options: няма

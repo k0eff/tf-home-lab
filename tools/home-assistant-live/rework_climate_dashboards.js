@@ -26,6 +26,11 @@ const rooms = {
       overshoot: "input_number.livingr_cooling_overshoot",
       winter: "input_number.livingr_winter_target",
       winterDelta: "input_number.livingr_winter_start_delta",
+      nightSummer: "input_number.livingr_summer_night_target",
+      nightCoolDelta: "input_number.livingr_night_cooling_start_delta",
+      nightWinter: "input_number.livingr_winter_night_target",
+      nightWinterDelta: "input_number.livingr_night_winter_start_delta",
+      allowNightCooling: "input_boolean.livingr_allow_night_cooling",
       summerOut: "input_number.livingr_summer_outside_threshold",
       winterOut: "input_number.livingr_winter_outside_threshold",
       mildOut: "input_number.livingr_mild_outside_threshold",
@@ -81,6 +86,14 @@ const timeDefaults = [
   ["Day Start", "day_start", "08:30:00"],
   ["Air Clean Start", "air_clean_start", "03:00:00"],
   ["Air Clean End", "air_clean_end", "06:00:00"],
+];
+
+const booleanHelpers = [
+  {
+    id: "livingr_allow_night_cooling",
+    name: "LivingR Allow Night Cooling",
+    icon: "mdi:weather-night",
+  },
 ];
 
 function setupBlock(prefix, current) {
@@ -157,6 +170,32 @@ async function createOrUpdateTimeHelpers(ws) {
   return changed;
 }
 
+async function createOrUpdateBooleanHelpers(ws) {
+  let id = 1500;
+  const list = await ws.request({ id: ++id, type: "input_boolean/list" });
+  if (!list.success) throw new Error(JSON.stringify(list));
+  const byId = new Map(list.result.map((helper) => [helper.id, helper]));
+  const changed = [];
+  for (const helper of booleanHelpers) {
+    const payload = {
+      id: ++id,
+      name: helper.name,
+      icon: helper.icon,
+    };
+    if (byId.has(helper.id)) {
+      const res = await ws.request({ ...payload, type: "input_boolean/update", input_boolean_id: helper.id });
+      if (!res.success) throw new Error(JSON.stringify(res));
+      changed.push(`updated input_boolean.${helper.id}`);
+    } else {
+      const res = await ws.request({ ...payload, type: "input_boolean/create" });
+      if (!res.success) throw new Error(JSON.stringify(res));
+      changed.push(`created input_boolean.${helper.id}`);
+      await rest("/api/services/input_boolean/turn_off", "POST", { entity_id: `input_boolean.${helper.id}` });
+    }
+  }
+  return changed;
+}
+
 function roomDiagram(room) {
   return `\`\`\`mermaid
 flowchart TD
@@ -204,9 +243,7 @@ Run \`tools/home-assistant-live/sync_room_energy_tables.js\` to generate the dai
 
 function roomView(room) {
   const h = room.helpers;
-  const nightEntities = room.title === "BedroomB"
-    ? [h.nightSummer, h.nightCoolDelta, h.nightWinter, h.nightWinterDelta]
-    : [];
+  const nightEntities = [h.nightSummer, h.nightCoolDelta, h.nightWinter, h.nightWinterDelta, h.allowNightCooling].filter(Boolean);
   return {
     title: room.viewTitle,
     path: room.path,
@@ -325,6 +362,7 @@ function removeRoomButtons(view) {
 (async () => {
   const ws = await connectWs();
   const timeChanges = await createOrUpdateTimeHelpers(ws);
+  const booleanChanges = await createOrUpdateBooleanHelpers(ws);
 
   const liveLiving = await rest("/api/config/automation/config/1770077000010");
   await rest("/api/config/automation/config/1770077000010", "POST", replaceSetupTemplates(liveLiving, "livingr"));
@@ -367,6 +405,7 @@ function removeRoomButtons(view) {
 
   const states = await rest("/api/states");
   const interesting = [
+    "input_boolean.livingr_allow_night_cooling",
     "input_datetime.livingr_night_start",
     "input_datetime.livingr_day_start",
     "input_datetime.bedroomb_night_start",
@@ -379,6 +418,7 @@ function removeRoomButtons(view) {
   ];
   console.log(JSON.stringify({
     timeChanges,
+    booleanChanges,
     dashboardPaths: ["/my-dash/living", "/my-dash/bedb"],
     states: Object.fromEntries(states.filter((s) => interesting.includes(s.entity_id)).map((s) => [s.entity_id, s.state])),
   }, null, 2));

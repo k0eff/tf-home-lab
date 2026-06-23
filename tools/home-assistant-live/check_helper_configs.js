@@ -2,24 +2,24 @@ const { connectWs } = require("./ha_ws_util");
 
 const ids = {
   input_number: [
-    "livingr_night_summer_target",
-    "livingr_night_winter_target",
-    "livingr_manual_override_duration_minutes",
-    "livingr_manual_override_target_temperature",
-    "bedroomb_manual_override_duration_minutes",
-    "bedroomb_manual_override_target_temperature",
+    "livingr_summer_night_target",
+    "livingr_winter_night_target",
+    "livingr_override_duration",
+    "livingr_manual_target_temperature",
+    "bedroomb_override_duration",
+    "bedroomb_manual_target_temperature",
   ],
   input_boolean: [
-    "livingr_manual_override_active",
-    "bedroomb_manual_override_active",
+    "livingr_manual_override",
+    "bedroomb_manual_override",
   ],
   input_select: [
-    "livingr_manual_override_hvac_mode",
-    "livingr_manual_override_fan_mode",
-    "livingr_manual_override_swing_mode",
-    "bedroomb_manual_override_hvac_mode",
-    "bedroomb_manual_override_fan_mode",
-    "bedroomb_manual_override_swing_mode",
+    "livingr_manual_hvac_mode",
+    "livingr_manual_fan_mode",
+    "livingr_manual_swing_mode",
+    "bedroomb_manual_hvac_mode",
+    "bedroomb_manual_fan_mode",
+    "bedroomb_manual_swing_mode",
   ],
   input_datetime: [
     "livingr_manual_override_until",

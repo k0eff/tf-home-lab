@@ -12,7 +12,7 @@ const rooms = {
     overrideAlias: "[TEST] AirCon - LivingR - manual override",
     logName: "[TEST] LivingR manual override",
     setupAnchor: "{% set day_summer_target = mild_summer_target",
-    setupInsert: "{% set livingr_manual_override_until = states('input_datetime.livingr_manual_override_until') %}\n{% set manual_override_active = is_state('input_boolean.livingr_manual_override_active', 'on') and livingr_manual_override_until not in ['unknown', 'unavailable', 'none'] and as_timestamp(livingr_manual_override_until, 0) > as_timestamp(now()) %}\n",
+    setupInsert: "{% set livingr_manual_override_until = states('input_datetime.livingr_manual_override_until') %}\n{% set manual_override_active = is_state('input_boolean.livingr_manual_override', 'on') and livingr_manual_override_until not in ['unknown', 'unavailable', 'none'] and as_timestamp(livingr_manual_override_until, 0) > as_timestamp(now()) %}\n",
     suffixFind: "mode={{ climate_mode }}, night_sleep=",
     suffixReplace: "mode={{ climate_mode }}, manual_override={{ manual_override_active }}, manual_until={{ livingr_manual_override_until }}, night_sleep=",
     defaults: { temp: 24, fan: "2", swing: "5_down", hvac: "cool" },
@@ -28,7 +28,7 @@ const rooms = {
     overrideAlias: "[TEST] AirCon - BedroomB - manual override",
     logName: "[TEST] BedroomB manual override",
     setupAnchor: "{% if primary_battery > room_sensor_min_battery",
-    setupInsert: "{% set bedroomb_manual_override_until = states('input_datetime.bedroomb_manual_override_until') %}\n{% set manual_override_active = is_state('input_boolean.bedroomb_manual_override_active', 'on') and bedroomb_manual_override_until not in ['unknown', 'unavailable', 'none'] and as_timestamp(bedroomb_manual_override_until, 0) > as_timestamp(now()) %}\n",
+    setupInsert: "{% set bedroomb_manual_override_until = states('input_datetime.bedroomb_manual_override_until') %}\n{% set manual_override_active = is_state('input_boolean.bedroomb_manual_override', 'on') and bedroomb_manual_override_until not in ['unknown', 'unavailable', 'none'] and as_timestamp(bedroomb_manual_override_until, 0) > as_timestamp(now()) %}\n",
     suffixFind: "mode={{ climate_mode }}, night_sleep=",
     suffixReplace: "mode={{ climate_mode }}, manual_override={{ manual_override_active }}, manual_until={{ bedroomb_manual_override_until }}, night_sleep=",
     defaults: { temp: 24, fan: "2", swing: "4", hvac: "cool" },
@@ -94,12 +94,12 @@ async function ensureInputDatetime(ws, entity, name) {
 
 async function ensureHelpers(ws) {
   for (const [prefix, room] of Object.entries(rooms)) {
-    await ensureInputBoolean(ws, `input_boolean.${prefix}_manual_override_active`, `${room.title} Manual Override`);
-    await ensureInputNumber(ws, `input_number.${prefix}_manual_override_duration_minutes`, `${room.title} Override Duration`, 5, 480, 5, 60, "min");
-    await ensureInputNumber(ws, `input_number.${prefix}_manual_override_target_temperature`, `${room.title} Manual Target Temperature`, 16, 31, 0.5, room.defaults.temp, "°C");
-    await ensureInputSelect(ws, `input_select.${prefix}_manual_override_hvac_mode`, `${room.title} Manual HVAC Mode`, hvacModes, room.defaults.hvac, "mdi:air-conditioner");
-    await ensureInputSelect(ws, `input_select.${prefix}_manual_override_fan_mode`, `${room.title} Manual Fan Mode`, fanModes, room.defaults.fan, "mdi:fan");
-    await ensureInputSelect(ws, `input_select.${prefix}_manual_override_swing_mode`, `${room.title} Manual Swing Mode`, swingModes, room.defaults.swing, "mdi:swap-vertical");
+    await ensureInputBoolean(ws, `input_boolean.${prefix}_manual_override`, `${room.title} Manual Override`);
+    await ensureInputNumber(ws, `input_number.${prefix}_override_duration`, `${room.title} Override Duration`, 5, 480, 5, 60, "min");
+    await ensureInputNumber(ws, `input_number.${prefix}_manual_target_temperature`, `${room.title} Manual Target Temperature`, 16, 31, 0.5, room.defaults.temp, "°C");
+    await ensureInputSelect(ws, `input_select.${prefix}_manual_hvac_mode`, `${room.title} Manual HVAC Mode`, hvacModes, room.defaults.hvac, "mdi:air-conditioner");
+    await ensureInputSelect(ws, `input_select.${prefix}_manual_fan_mode`, `${room.title} Manual Fan Mode`, fanModes, room.defaults.fan, "mdi:fan");
+    await ensureInputSelect(ws, `input_select.${prefix}_manual_swing_mode`, `${room.title} Manual Swing Mode`, swingModes, room.defaults.swing, "mdi:swap-vertical");
     await ensureInputDatetime(ws, `input_datetime.${prefix}_manual_override_until`, `${room.title} Manual Override Until`);
   }
 }
@@ -131,12 +131,12 @@ function patchComfortConfig(config, prefix, room) {
 }
 
 function overrideAutomation(prefix, room) {
-  const active = `input_boolean.${prefix}_manual_override_active`;
-  const duration = `input_number.${prefix}_manual_override_duration_minutes`;
-  const target = `input_number.${prefix}_manual_override_target_temperature`;
-  const mode = `input_select.${prefix}_manual_override_hvac_mode`;
-  const fan = `input_select.${prefix}_manual_override_fan_mode`;
-  const swing = `input_select.${prefix}_manual_override_swing_mode`;
+  const active = `input_boolean.${prefix}_manual_override`;
+  const duration = `input_number.${prefix}_override_duration`;
+  const target = `input_number.${prefix}_manual_target_temperature`;
+  const mode = `input_select.${prefix}_manual_hvac_mode`;
+  const fan = `input_select.${prefix}_manual_fan_mode`;
+  const swing = `input_select.${prefix}_manual_swing_mode`;
   const until = `input_datetime.${prefix}_manual_override_until`;
   return {
     alias: room.overrideAlias,
@@ -172,7 +172,7 @@ function overrideAutomation(prefix, room) {
           },
           {
             alias: "Apply manual override controls",
-            conditions: [{ condition: "template", value_template: `{{ is_state('${active}', 'on') and trigger.id in ['override_started', 'override_duration_changed', 'override_control_changed'] }}` }],
+            conditions: [{ condition: "template", value_template: `{{ is_state('${active}', 'on') and trigger.id in ['override_started', 'override_duration_changed', 'override_control_changed', 'override_expiry_check'] and states('${until}') not in ['unknown', 'unavailable', 'none'] and as_timestamp(states('${until}'), 0) > as_timestamp(now()) }}` }],
             sequence: [
               {
                 choose: [{
@@ -206,13 +206,13 @@ function manualOverrideCard(prefix, room) {
     title: "Manual override",
     show_header_toggle: false,
     entities: [
-      { entity: `input_boolean.${prefix}_manual_override_active`, name: "Manual override" },
-      { entity: `input_number.${prefix}_manual_override_duration_minutes`, name: "Duration" },
+      { entity: `input_boolean.${prefix}_manual_override`, name: "Manual override" },
+      { entity: `input_number.${prefix}_override_duration`, name: "Duration" },
       { entity: `input_datetime.${prefix}_manual_override_until`, name: "Active until" },
-      { entity: `input_select.${prefix}_manual_override_hvac_mode`, name: "Mode" },
-      { entity: `input_number.${prefix}_manual_override_target_temperature`, name: "Target temp" },
-      { entity: `input_select.${prefix}_manual_override_fan_mode`, name: "Fan" },
-      { entity: `input_select.${prefix}_manual_override_swing_mode`, name: "Vane" },
+      { entity: `input_select.${prefix}_manual_hvac_mode`, name: "Mode" },
+      { entity: `input_number.${prefix}_manual_target_temperature`, name: "Target temp" },
+      { entity: `input_select.${prefix}_manual_fan_mode`, name: "Fan" },
+      { entity: `input_select.${prefix}_manual_swing_mode`, name: "Vane" },
     ],
   };
 }
@@ -222,7 +222,7 @@ function manualStatus(prefix) {
     type: "markdown",
     content: `### Manual override status
 
-{% set active = is_state('input_boolean.${prefix}_manual_override_active', 'on') %}
+{% set active = is_state('input_boolean.${prefix}_manual_override', 'on') %}
 {% set until = states('input_datetime.${prefix}_manual_override_until') %}
 {% set running = active and until not in ['unknown', 'unavailable', 'none'] and as_timestamp(until, 0) > as_timestamp(now()) %}
 <ha-alert alert-type="{{ 'warning' if running else 'success' }}">{{ 'Manual override active until ' ~ until if running else 'Comfort program controls this room' }}</ha-alert>`,

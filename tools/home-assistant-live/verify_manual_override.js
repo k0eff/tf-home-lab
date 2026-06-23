@@ -31,12 +31,12 @@ const rooms = [
     const viewText = JSON.stringify(view?.cards || []);
     const stateIds = new Set(states.map((item) => item.entity_id));
     const helpers = [
-      `input_boolean.${room.prefix}_manual_override_active`,
-      `input_number.${room.prefix}_manual_override_duration_minutes`,
-      `input_number.${room.prefix}_manual_override_target_temperature`,
-      `input_select.${room.prefix}_manual_override_hvac_mode`,
-      `input_select.${room.prefix}_manual_override_fan_mode`,
-      `input_select.${room.prefix}_manual_override_swing_mode`,
+      `input_boolean.${room.prefix}_manual_override`,
+      `input_number.${room.prefix}_override_duration`,
+      `input_number.${room.prefix}_manual_target_temperature`,
+      `input_select.${room.prefix}_manual_hvac_mode`,
+      `input_select.${room.prefix}_manual_fan_mode`,
+      `input_select.${room.prefix}_manual_swing_mode`,
       `input_datetime.${room.prefix}_manual_override_until`,
     ];
     out[room.title] = {
@@ -45,7 +45,7 @@ const rooms = [
       comfortComputesManualActive: JSON.stringify(comfort).includes("manual_override_active"),
       overrideAutomationPresent: override.alias?.includes("manual override") || override.alias?.includes("Manual override"),
       overrideAppliesClimate: JSON.stringify(override).includes("climate.set_hvac_mode") && JSON.stringify(override).includes("climate.set_fan_mode") && JSON.stringify(override).includes("climate.set_swing_mode"),
-      dashboardCardPresent: viewText.includes("Manual override") && viewText.includes(`${room.prefix}_manual_override_target_temperature`),
+      dashboardCardPresent: viewText.includes("Manual override") && viewText.includes(`${room.prefix}_manual_target_temperature`),
     };
   }
   ws.close();

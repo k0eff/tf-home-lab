@@ -40,17 +40,19 @@ resource "homeassistant_automation" "aircon_enter_home" {
 
 resource "homeassistant_automation" "aircon_hol_fan_high_no_motion" {
   alias       = "Aircon - LivingR - fan HIGH no motion"
+  description = "Legacy automation kept inert. LivingR fan motion logic now lives in the room-sensor comfort program."
   mode        = "single"
   trigger     = "[{\"platform\": \"state\", \"entity_id\": [\"binary_sensor.motion01\"], \"from\": \"on\", \"to\": \"off\", \"for\": {\"hours\": 0, \"minutes\": 15, \"seconds\": 0}}]"
-  condition   = "[{\"condition\": \"template\", \"value_template\": \"{{ now().hour >= 8 and now().hour <= 23 }}\"}, {\"condition\": \"or\", \"conditions\": [{\"condition\": \"device\", \"device_id\": \"44cfd8c25ff5c476fd5c6a5124d66470\", \"domain\": \"climate\", \"entity_id\": \"climate.hol\", \"type\": \"is_hvac_mode\", \"hvac_mode\": \"cool\"}, {\"condition\": \"device\", \"device_id\": \"44cfd8c25ff5c476fd5c6a5124d66470\", \"domain\": \"climate\", \"entity_id\": \"e00fdc2347e5e16f9c5aa6da621f8261\", \"type\": \"is_hvac_mode\", \"hvac_mode\": \"fan_only\"}, {\"condition\": \"device\", \"device_id\": \"44cfd8c25ff5c476fd5c6a5124d66470\", \"domain\": \"climate\", \"entity_id\": \"e00fdc2347e5e16f9c5aa6da621f8261\", \"type\": \"is_hvac_mode\", \"hvac_mode\": \"heat\"}]}]"
+  condition   = "[{\"condition\": \"template\", \"value_template\": \"{{ false }}\"}]"
   action      = "[{\"service\": \"climate.set_fan_mode\", \"data\": {\"fan_mode\": \"5\"}, \"target\": {\"entity_id\": \"climate.hol\"}}]"
 }
 
 resource "homeassistant_automation" "aircon_hol_fan_mid_motion" {
   alias       = "Aircon - LivingR - fan MID motion"
+  description = "Legacy automation kept inert. LivingR fan motion logic now lives in the room-sensor comfort program."
   mode        = "single"
   trigger     = "[{\"platform\": \"state\", \"entity_id\": [\"binary_sensor.motion01\"], \"from\": \"off\", \"to\": \"on\", \"for\": {\"hours\": 0, \"minutes\": 0, \"seconds\": 0}}]"
-  condition   = "[{\"condition\": \"template\", \"value_template\": \"{{ now().hour >= 8 and now().hour <= 23 }}\"}, {\"condition\": \"or\", \"conditions\": [{\"condition\": \"device\", \"device_id\": \"44cfd8c25ff5c476fd5c6a5124d66470\", \"domain\": \"climate\", \"entity_id\": \"climate.hol\", \"type\": \"is_hvac_mode\", \"hvac_mode\": \"cool\"}, {\"condition\": \"device\", \"device_id\": \"44cfd8c25ff5c476fd5c6a5124d66470\", \"domain\": \"climate\", \"entity_id\": \"e00fdc2347e5e16f9c5aa6da621f8261\", \"type\": \"is_hvac_mode\", \"hvac_mode\": \"fan_only\"}, {\"condition\": \"device\", \"device_id\": \"44cfd8c25ff5c476fd5c6a5124d66470\", \"domain\": \"climate\", \"entity_id\": \"e00fdc2347e5e16f9c5aa6da621f8261\", \"type\": \"is_hvac_mode\", \"hvac_mode\": \"heat\"}]}]"
+  condition   = "[{\"condition\": \"template\", \"value_template\": \"{{ false }}\"}]"
   action      = "[{\"service\": \"climate.set_fan_mode\", \"data\": {\"fan_mode\": \"3\"}, \"target\": {\"entity_id\": \"climate.hol\"}}]"
 }
 
@@ -358,6 +360,7 @@ locals {
 {% set day_air_clean_window = minutes_now >= day_start_minutes and minutes_now <= 1439 %}
 {% set livingr_manual_override_until = states('input_datetime.livingr_manual_override_until') %}
 {% set manual_override_active = is_state('input_boolean.livingr_manual_override', 'on') and livingr_manual_override_until not in ['unknown', 'unavailable', 'none'] and as_timestamp(livingr_manual_override_until, 0) > as_timestamp(now()) %}
+{% set allow_night_cooling = is_state('input_boolean.livingr_allow_night_cooling', 'on') %}
 {% set day_summer_target = mild_summer_target if climate_mode == 'summer' and outside is not none and outside < mild_outside_threshold else hot_summer_target if climate_mode == 'summer' else none %}
 {% set target = night_summer_target if night_sleep_window and climate_mode == 'summer' else day_summer_target if climate_mode == 'summer' else night_winter_target if night_sleep_window and climate_mode == 'winter' else winter_target if climate_mode == 'winter' else none %}
 {% set active_cooling_start_delta = night_cooling_start_delta if night_sleep_window else cooling_start_delta %}
@@ -366,7 +369,7 @@ locals {
 {% set dynamic_setpoint = ([16, [31, ((ac_temp - error) * 2) | round(0) / 2] | min] | max) if ac_temp is not none and error is not none else none %}
 EOT
 
-  livingr_climate_test_log_suffix = "mode={{ climate_mode }}, manual_override={{ manual_override_active }}, manual_until={{ livingr_manual_override_until }}, night_sleep={{ night_sleep_window }}, night_air_clean={{ night_air_clean_window }}, outside_source={{ outside_source }}, outside={{ outside }}, venti_raw={{ outside_venti_raw }}, venti_battery={{ outside_venti_battery }}%, weather={{ outside_weather }}, source={{ source }}, room={{ room }}, room_battery={{ battery }}%, ac_sensor={{ ac_temp }}, target={{ target }}, night_start={{ livingr_night_start_value }}, day_start={{ livingr_day_start_value }}, air_clean={{ livingr_air_clean_start_value }}-{{ livingr_air_clean_end_value }}, cooling_delta={{ active_cooling_start_delta }}, winter_delta={{ active_winter_start_delta }}, day_cooling_delta={{ cooling_start_delta }}, night_cooling_delta={{ night_cooling_start_delta }}, learned_overshoot={{ learned_overshoot }}, stop_room={{ cooling_stop_room_temp }}, fan={{ cooling_fan_mode }}, cooldown={{ coil_cooldown_minutes }}m, error={{ error | round(2) if error is not none else 'none' }}, setpoint={{ dynamic_setpoint }}"
+  livingr_climate_test_log_suffix = "mode={{ climate_mode }}, manual_override={{ manual_override_active }}, manual_until={{ livingr_manual_override_until }}, allow_night_cooling={{ allow_night_cooling }}, night_sleep={{ night_sleep_window }}, night_air_clean={{ night_air_clean_window }}, outside_source={{ outside_source }}, outside={{ outside }}, venti_raw={{ outside_venti_raw }}, venti_battery={{ outside_venti_battery }}%, weather={{ outside_weather }}, source={{ source }}, room={{ room }}, room_battery={{ battery }}%, ac_sensor={{ ac_temp }}, target={{ target }}, night_start={{ livingr_night_start_value }}, day_start={{ livingr_day_start_value }}, air_clean={{ livingr_air_clean_start_value }}-{{ livingr_air_clean_end_value }}, cooling_delta={{ active_cooling_start_delta }}, winter_delta={{ active_winter_start_delta }}, day_cooling_delta={{ cooling_start_delta }}, night_cooling_delta={{ night_cooling_start_delta }}, learned_overshoot={{ learned_overshoot }}, stop_room={{ cooling_stop_room_temp }}, fan={{ cooling_fan_mode }}, cooldown={{ coil_cooldown_minutes }}m, error={{ error | round(2) if error is not none else 'none' }}, setpoint={{ dynamic_setpoint }}"
 }
 
 resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_band" {
@@ -584,24 +587,50 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
           conditions = [
             {
               condition      = "template"
-              value_template = "${local.livingr_climate_test_setup}\n{{ not night_sleep_window and day_air_clean_window and is_state('binary_sensor.motion01', 'on') and states('climate.hol_2') == 'fan_only' and (state_attr('climate.hol_2', 'fan_mode') or '') not in ['2', '3'] }}"
+              value_template = "${local.livingr_climate_test_setup}\n{{ not night_sleep_window and day_air_clean_window and is_state('binary_sensor.motion01', 'on') and ((states('climate.hol_2') == 'fan_only' and (state_attr('climate.hol_2', 'fan_mode') or '') not in ['2', '3']) or (states('climate.hol_2') == 'cool' and (state_attr('climate.hol_2', 'fan_mode') or '') != (cooling_fan_mode | string))) }}"
             }
           ]
           sequence = [
             {
-              service = "climate.set_fan_mode"
-              target = {
-                entity_id = "climate.hol_2"
-              }
-              data = {
-                fan_mode = "3"
-              }
+              choose = [
+                {
+                  alias = "Motion while cooling: restore configured cooling fan"
+                  conditions = [
+                    {
+                      condition      = "template"
+                      value_template = "{{ states('climate.hol_2') == 'cool' }}"
+                    }
+                  ]
+                  sequence = [
+                    {
+                      service = "climate.set_fan_mode"
+                      target = {
+                        entity_id = "climate.hol_2"
+                      }
+                      data = {
+                        fan_mode = "${local.livingr_climate_test_setup}\n{{ cooling_fan_mode }}"
+                      }
+                    }
+                  ]
+                }
+              ]
+              default = [
+                {
+                  service = "climate.set_fan_mode"
+                  target = {
+                    entity_id = "climate.hol_2"
+                  }
+                  data = {
+                    fan_mode = "3"
+                  }
+                }
+              ]
             },
             {
               service = "logbook.log"
               data = {
                 name      = "[TEST] LivingR climate comfort band"
-                message   = "${local.livingr_climate_test_setup}\nDaytime motion: restoring fan 3 while climate already running; ${local.livingr_climate_test_log_suffix}"
+                message   = "${local.livingr_climate_test_setup}\nDaytime motion: restoring occupied fan profile while climate already running; ${local.livingr_climate_test_log_suffix}"
                 entity_id = "climate.hol_2"
               }
             }
@@ -612,7 +641,7 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
           conditions = [
             {
               condition      = "template"
-              value_template = "${local.livingr_climate_test_setup}\n{{ not night_air_clean_window and climate_mode == 'summer' and effective is not none and target is not none and effective >= target + active_cooling_start_delta and dynamic_setpoint is not none }}"
+              value_template = "${local.livingr_climate_test_setup}\n{{ not night_air_clean_window and climate_mode == 'summer' and (not night_sleep_window or allow_night_cooling) and effective is not none and target is not none and effective >= target + active_cooling_start_delta and dynamic_setpoint is not none }}"
             },
             {
               condition      = "template"
@@ -630,21 +659,21 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
               }
             },
             {
-              service = "climate.set_temperature"
-              target = {
-                entity_id = "climate.hol_2"
-              }
-              data = {
-                temperature = "${local.livingr_climate_test_setup}\n{{ dynamic_setpoint }}"
-              }
-            },
-            {
               service = "climate.set_fan_mode"
               target = {
                 entity_id = "climate.hol_2"
               }
               data = {
                 fan_mode = "${local.livingr_climate_test_setup}\n{{ cooling_fan_mode }}"
+              }
+            },
+            {
+              service = "climate.set_temperature"
+              target = {
+                entity_id = "climate.hol_2"
+              }
+              data = {
+                temperature = "${local.livingr_climate_test_setup}\n{{ dynamic_setpoint }}"
               }
             },
             {
@@ -1050,7 +1079,7 @@ resource "homeassistant_automation" "livingr_manual_override" {
           conditions = [
             {
               condition      = "template"
-              value_template = "{{ is_state('input_boolean.livingr_manual_override', 'on') and trigger.id in ['override_started', 'override_duration_changed', 'override_control_changed'] }}"
+              value_template = "{{ is_state('input_boolean.livingr_manual_override', 'on') and trigger.id in ['override_started', 'override_duration_changed', 'override_control_changed', 'override_expiry_check'] and states('input_datetime.livingr_manual_override_until') not in ['unknown', 'unavailable', 'none'] and as_timestamp(states('input_datetime.livingr_manual_override_until'), 0) > as_timestamp(now()) }}"
             }
           ]
           sequence = [
@@ -1458,24 +1487,50 @@ resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_ba
           conditions = [
             {
               condition      = "template"
-              value_template = "${local.bedroomb_climate_test_setup}\n{{ not night_sleep_window and day_air_clean_window and is_state('binary_sensor.motion03', 'on') and states('climate.v357_spalniag_2') == 'fan_only' and (state_attr('climate.v357_spalniag_2', 'fan_mode') or '') not in ['2', '3'] }}"
+              value_template = "${local.bedroomb_climate_test_setup}\n{{ not night_sleep_window and day_air_clean_window and is_state('binary_sensor.motion03', 'on') and ((states('climate.v357_spalniag_2') == 'fan_only' and (state_attr('climate.v357_spalniag_2', 'fan_mode') or '') not in ['2', '3']) or (states('climate.v357_spalniag_2') == 'cool' and (state_attr('climate.v357_spalniag_2', 'fan_mode') or '') != (cooling_fan_mode | string))) }}"
             }
           ]
           sequence = [
             {
-              service = "climate.set_fan_mode"
-              target = {
-                entity_id = "climate.v357_spalniag_2"
-              }
-              data = {
-                fan_mode = "3"
-              }
+              choose = [
+                {
+                  alias = "Motion while cooling: restore configured cooling fan"
+                  conditions = [
+                    {
+                      condition      = "template"
+                      value_template = "{{ states('climate.v357_spalniag_2') == 'cool' }}"
+                    }
+                  ]
+                  sequence = [
+                    {
+                      service = "climate.set_fan_mode"
+                      target = {
+                        entity_id = "climate.v357_spalniag_2"
+                      }
+                      data = {
+                        fan_mode = "${local.bedroomb_climate_test_setup}\n{{ cooling_fan_mode }}"
+                      }
+                    }
+                  ]
+                }
+              ]
+              default = [
+                {
+                  service = "climate.set_fan_mode"
+                  target = {
+                    entity_id = "climate.v357_spalniag_2"
+                  }
+                  data = {
+                    fan_mode = "3"
+                  }
+                }
+              ]
             },
             {
               service = "logbook.log"
               data = {
                 name      = "[TEST] BedroomB climate comfort band"
-                message   = "${local.bedroomb_climate_test_setup}\nDaytime motion: restoring fan 3 while climate already running; ${local.bedroomb_climate_test_log_suffix}"
+                message   = "${local.bedroomb_climate_test_setup}\nDaytime motion: restoring occupied fan profile while climate already running; ${local.bedroomb_climate_test_log_suffix}"
                 entity_id = "climate.v357_spalniag_2"
               }
             }
@@ -1504,21 +1559,21 @@ resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_ba
               }
             },
             {
-              service = "climate.set_temperature"
-              target = {
-                entity_id = "climate.v357_spalniag_2"
-              }
-              data = {
-                temperature = "${local.bedroomb_climate_test_setup}\n{{ dynamic_setpoint }}"
-              }
-            },
-            {
               service = "climate.set_fan_mode"
               target = {
                 entity_id = "climate.v357_spalniag_2"
               }
               data = {
                 fan_mode = "${local.bedroomb_climate_test_setup}\n{{ cooling_fan_mode }}"
+              }
+            },
+            {
+              service = "climate.set_temperature"
+              target = {
+                entity_id = "climate.v357_spalniag_2"
+              }
+              data = {
+                temperature = "${local.bedroomb_climate_test_setup}\n{{ dynamic_setpoint }}"
               }
             },
             {
@@ -1924,7 +1979,7 @@ resource "homeassistant_automation" "bedroomb_manual_override" {
           conditions = [
             {
               condition      = "template"
-              value_template = "{{ is_state('input_boolean.bedroomb_manual_override', 'on') and trigger.id in ['override_started', 'override_duration_changed', 'override_control_changed'] }}"
+              value_template = "{{ is_state('input_boolean.bedroomb_manual_override', 'on') and trigger.id in ['override_started', 'override_duration_changed', 'override_control_changed', 'override_expiry_check'] and states('input_datetime.bedroomb_manual_override_until') not in ['unknown', 'unavailable', 'none'] and as_timestamp(states('input_datetime.bedroomb_manual_override_until'), 0) > as_timestamp(now()) }}"
             }
           ]
           sequence = [
