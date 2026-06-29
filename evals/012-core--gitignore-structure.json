@@ -1,0 +1,25 @@
+{
+  "id": "012",
+  "name": "core--gitignore-structure",
+  "category": "core",
+  "description": "Fix .gitignore to properly exclude vendor/ and track Gemfile.lock",
+  "implementation": {
+    "file": ".gitignore",
+    "changes": [
+      "Move vendor/ to separate line (currently on same line as terraform.tfvars negation)",
+      "Remove /Gemfile.lock from ignore list (should be tracked for reproducibility)",
+      "Verify vendor/ has proper syntax (newline separator)"
+    ]
+  },
+  "validation": {
+    "type": "gitignore_syntax",
+    "checks": [
+      ".gitignore has vendor/ on separate line",
+      ".gitignore does not ignore Gemfile.lock",
+      "No syntax errors in .gitignore (each pattern on own line)",
+      "git check-ignore vendor/bundle/... returns vendor/",
+      "git check-ignore Gemfile.lock returns nothing (not ignored)"
+    ]
+  },
+  "status": "pending"
+}
