@@ -40,3 +40,6 @@ protected/
 
 !config/terraform/terraform.tfvars
 vendor/
+
+# Generated Home Assistant artifacts (refreshed daily by launchd)
+tools/home-assistant-live/*_energy_table*.md
