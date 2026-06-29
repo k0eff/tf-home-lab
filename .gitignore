@@ -23,7 +23,6 @@ terraform.tfvars
 /_yardoc
 /coverage
 /doc/
-/Gemfile.lock
 /InstalledFiles
 /lib/bundler/man
 /log
@@ -39,4 +38,5 @@ terraform.tfvars
 protected/
 *.plan*
 
-!config/terraform/terraform.tfvarsvendor/
+!config/terraform/terraform.tfvars
+vendor/
