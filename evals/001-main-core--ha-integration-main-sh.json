@@ -1,0 +1,24 @@
+{
+  "id": "001",
+  "branch": "main",
+  "name": "core--ha-integration-main-sh",
+  "category": "core",
+  "description": "protected/main.sh exports HA_URL and HA_TOKEN environment variables required for Home Assistant Terraform provider authentication.",
+  "implementation": {
+    "file": "protected/main.sh",
+    "changes": [
+      "Added HA_URL export pointing to Home Assistant instance",
+      "Added HA_TOKEN export with long-lived access token"
+    ]
+  },
+  "validation": {
+    "type": "config_exists",
+    "checks": [
+      "protected/main.sh exists",
+      "File contains 'HA_URL=' export",
+      "File contains 'HA_TOKEN=' export",
+      "HA_URL value starts with 'http' (not empty)"
+    ]
+  },
+  "status": "pass"
+}

@@ -1,0 +1,26 @@
+{
+  "id": "002",
+  "branch": "main",
+  "name": "core--gitignore-newline-fix",
+  "category": "core",
+  "description": "protected/.gitignore has correct newlines between entries. Prior bug: 'echo >> .gitignore' without trailing newline caused .DS_Store and temp_provider_schema/ to concatenate on one line, making both patterns inactive.",
+  "implementation": {
+    "file": "protected/.gitignore",
+    "changes": [
+      "Fixed concatenation bug: .DS_Storetemp_provider_schema/ split into two lines",
+      "Each pattern now on its own line with proper newline terminator"
+    ]
+  },
+  "validation": {
+    "type": "gitignore_syntax",
+    "checks": [
+      "protected/.gitignore exists",
+      "File contains '.DS_Store' on its own line",
+      "File contains 'temp_provider_schema/' on its own line",
+      "No line contains both '.DS_Store' and 'temp_provider_schema' concatenated",
+      "git check-ignore -v protected/.DS_Store would match (if file existed)",
+      "git check-ignore -v protected/temp_provider_schema/ would match (if dir existed)"
+    ]
+  },
+  "status": "pass"
+}
