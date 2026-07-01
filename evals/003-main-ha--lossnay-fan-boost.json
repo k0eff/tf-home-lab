@@ -1,0 +1,60 @@
+{
+  "id": "003",
+  "branch": "main",
+  "name": "ha--lossnay-fan-boost",
+  "category": "ha",
+  "description": "Temporary fan speed boost for Lossnay ventilation. Buttons for 30/60 min at speed 4, auto-restore to speed 2 after timer or on cancel.",
+  "implementation": {
+    "files": [
+      "tools/home-assistant-live/setup_fan_boost.js",
+      "tools/home-assistant-live/verify_fan_boost.js",
+      "tools/home-assistant-live/setup_presence.js"
+    ],
+    "changes": [
+      "Creates 4 HA helpers: input_boolean.lossnay_fan_boost_active, input_datetime.lossnay_fan_boost_until, input_button.lossnay_fan_boost_30m, input_button.lossnay_fan_boost_60m",
+      "Creates automation id=1770077000052 '[TEST] Lossnay - fan boost' (entity: automation.test_lossnay_fan_boost) with choose branches for activate/expire/cancel",
+      "Patches my-dash/aircon dashboard: wraps 'Lossnay Ventilation' entities card + boost status markdown + boost control horizontal-stack into a single vertical-stack card, so HA's masonry layout keeps them visually together instead of scattering them across columns"
+    ]
+  },
+  "validation": {
+    "type": "functional_test",
+    "script": "tools/home-assistant-live/verify_fan_boost.js",
+    "checks": [
+      "C1: All 4 HA helpers exist (input_boolean/list, input_datetime/list, input_button/list)",
+      "C2: Automation '[TEST] Lossnay - fan boost' exists (REST config) and is enabled (state=on)",
+      "C3: my-dash/aircon view has a vertical-stack containing Lossnay Ventilation + status markdown + control horizontal-stack, in that order",
+      "C4: Pressing input_button.lossnay_fan_boost_30m sets select.venti_fan_speed to '4' and input_boolean.lossnay_fan_boost_active to 'on' within 6s",
+      "C5: Turning off input_boolean.lossnay_fan_boost_active restores select.venti_fan_speed to '2' within 6s"
+    ]
+  },
+  "status": "pass",
+  "incidents": [
+    {
+      "what": "Automation id 1770077000051 was already in use by setup_presence.js ('Presence - fused home detection', tracks Krasi/Ema home state for Krasi and Ema). First setup_fan_boost.js run overwrote that automation's config via POST /api/config/automation/config/1770077000051, replacing presence-detection logic with fan-boost logic. Entity_id stayed sticky as automation.presence_fused_home_detection (HA does not rename entity_id on alias change), which masked the collision — the automation looked like it belonged to fan boost when queried by alias/entity friendly_name.",
+      "detected_by": "User reported ventilation stuck at max speed with dashboard showing normal. Investigation cross-referenced all automation IDs used across tools/home-assistant-live/*.js and found 1770077000051 referenced by both setup_presence.js and setup_fan_boost.js.",
+      "fix": "Re-ran setup_presence.js to restore the original presence-detection automation on id 1770077000051. Moved fan boost automation to a fresh, verified-unused id 1770077000052 (confirmed via live 404 check against HA before use). Updated setup_fan_boost.js and verify_fan_boost.js accordingly.",
+      "root_cause": "No live collision check before picking an automation id; id was chosen by convention (sequential from a memorized list) instead of querying HA for existing ids."
+    },
+    {
+      "what": "select.venti_fan_speed was left stuck at '4' (real hardware, not just entity state) because boost was toggled on during ad-hoc testing without a matching cancel completing before the automation got overwritten by the id collision above.",
+      "fix": "Manually called select.select_option with option='2' to restore normal ventilation speed immediately upon discovery."
+    },
+    {
+      "what": "Dashboard cards appeared visually scattered: aircon view has no explicit view type, defaulting to Lovelace 'masonry' layout, which distributes cards across columns by height rather than rendering them in strict top-to-bottom order. The Lossnay entities card, boost status card, and boost control card were adjacent in the cards array but rendered in different columns.",
+      "fix": "Wrapped the three cards in a single vertical-stack card so masonry treats them as one unit and keeps them visually grouped, regardless of column balancing."
+    },
+    {
+      "what": "Status markdown card showed 'Нормална скорост (2)' even when select.venti_fan_speed was actually '4'. Template only read input_boolean.lossnay_fan_boost_active and the until timestamp — it never read the real select.venti_fan_speed state, so if speed was changed outside the boost flow (manual override, or boost cancelled without automation setting it back), the card lied about the real hardware state.",
+      "detected_by": "User reported: 'когато вентилатора е на 4 пак се показва че е на 2 в новото панелче' (fan at 4, panel still shows 2).",
+      "fix": "boostStatusCard() template now reads {{ states('select.venti_fan_speed') }} directly as current_speed and displays it in all three branches (boost running / normal / other). Verified via POST /api/template rendering the live card content with speed=4 (renders 'Текуща скорост: 4') and speed=2 (renders 'Нормална скорост (2)') — both confirmed correct against actual state.",
+      "root_cause": "Card conflated 'boost timer active' with 'fan speed value' instead of treating them as independent facts — assumed speed is always NORMAL_LEVEL whenever the boost boolean is off."
+    },
+    {
+      "what": "Dashboard-facing text was partly Bulgarian: boostStatusCard() alert strings ('Нормална скорост', 'Текуща скорост') and boostControlCard() button names ('Boost 30мин', 'Boost 60мин', 'Спри boost'). Violates the standing rule that all code/artifacts must be in English (Bulgarian is for chat with the user only).",
+      "detected_by": "User: 'пропусна оплакването ми че в дашборда има вкаран български език. всичко трябва да е на английски'.",
+      "fix": "Translated boostStatusCard() alert text to English ('Normal speed', 'Current speed', 'Boost active ... remaining') and boostControlCard() button names to English ('Boost 30min', 'Boost 60min', 'Stop boost'). Re-ran setup_fan_boost.js to push the change live, then dumped the live my-dash/aircon Lovelace config over WS and regex-scanned for any Cyrillic characters ([А-Яа-яЁё]) — result: NO_CYRILLIC_FOUND. Re-ran verify_fan_boost.js afterward — all 5 criteria still pass.",
+      "root_cause": "Initial implementation mixed the user's chat language into card content instead of keeping all persisted dashboard text in English."
+    }
+  ],
+  "notes": "HA auto-generates helper slugs from display names. Name 'Lossnay Fan Boost Active' becomes slug 'lossnay_fan_boost_active'. Before reusing any automation id, verify it's unused with GET /api/config/automation/config/{id} expecting 404 — do not assume based on a locally memorized id list. Any dashboard status card that summarizes an entity's state must read that entity live via states(...) — never infer/assume its value from a related helper's state."
+}
