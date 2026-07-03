@@ -227,3 +227,8 @@ import {
   to = homeassistant_automation.presence_fused_home_detection
   id = "1770077000051"
 }
+
+import {
+  to = homeassistant_automation.test_aircon_room_sensor_fluctuation_tracker
+  id = "1770077000099"
+}
