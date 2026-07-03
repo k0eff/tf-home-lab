@@ -10,6 +10,8 @@ ${prefix === "bedroomb" ? "{% set primary_battery = states('sensor.miaomiaoce_t2
 {% set outside_venti_device = states('sensor.venti_outside_temperature') | float(none) %}
 {% set room_sensor_min_battery = states('input_number.${prefix}_room_sensor_min_battery') | float(10) %}
 {% set outside_sensor_min_battery = states('input_number.${prefix}_outside_sensor_min_battery') | float(10) %}
+{% set room_sensor_stale_hours = states('input_number.${prefix}_room_sensor_stale_hours') | float(5) %}
+{% set room_ac_disagreement_threshold = states('input_number.${prefix}_room_ac_disagreement_threshold') | float(1.5) %}
 {% set outside_venti_offset = states('input_number.${prefix}_venti_in_offset') | float(2) %}
 {% set winter_outside_threshold = states('input_number.${prefix}_winter_outside_threshold') | float(8) %}
 {% set summer_outside_threshold = states('input_number.${prefix}_summer_outside_threshold') | float(15) %}
@@ -57,8 +59,8 @@ ${prefix === "bedroomb" ? "{% set primary_battery = states('sensor.miaomiaoce_t2
 {% endif %}
 {% set climate_mode = 'winter' if outside is not none and outside <= winter_outside_threshold else 'summer' if outside is not none and outside >= summer_outside_threshold else 'neutral' %}
 ${prefix === "bedroomb"
-? "{% set bedroomb_manual_override_until = states('input_datetime.bedroomb_manual_override_until') %}\n{% set manual_override_active = is_state('input_boolean.bedroomb_manual_override', 'on') and bedroomb_manual_override_until not in ['unknown', 'unavailable', 'none'] and as_timestamp(bedroomb_manual_override_until, 0) > as_timestamp(now()) %}\n{% if primary_battery > room_sensor_min_battery and primary_room is not none %}\n  {% set source = 'primary_room_sensor' %}\n  {% set effective = primary_room %}\n{% elif secondary_battery > room_sensor_min_battery and secondary_room is not none %}\n  {% set source = 'secondary_room_sensor' %}\n  {% set effective = secondary_room %}\n{% else %}\n  {% set source = 'climate_fallback' %}\n  {% set effective = ac_temp %}\n{% endif %}"
-: "{% set source = 'room_sensor' if battery > room_sensor_min_battery and room is not none else 'climate_fallback' %}\n{% set effective = room if source == 'room_sensor' else ac_temp %}\n{% set livingr_manual_override_until = states('input_datetime.livingr_manual_override_until') %}\n{% set manual_override_active = is_state('input_boolean.livingr_manual_override', 'on') and livingr_manual_override_until not in ['unknown', 'unavailable', 'none'] and as_timestamp(livingr_manual_override_until, 0) > as_timestamp(now()) %}\n{% set allow_night_cooling = is_state('input_boolean.livingr_allow_night_cooling', 'on') %}"}
+? "{% set bedroomb_manual_override_until = states('input_datetime.bedroomb_manual_override_until') %}\n{% set manual_override_active = is_state('input_boolean.bedroomb_manual_override', 'on') and bedroomb_manual_override_until not in ['unknown', 'unavailable', 'none'] and as_timestamp(bedroomb_manual_override_until, 0) > as_timestamp(now()) %}\n{% set bedroomb_room_primary_last_moved = states('input_datetime.bedroomb_room_primary_last_moved') %}\n{% set bedroomb_room_secondary_last_moved = states('input_datetime.bedroomb_room_secondary_last_moved') %}\n{% set primary_stale = bedroomb_room_primary_last_moved in ['unknown', 'unavailable', 'none', ''] or (as_timestamp(now()) - as_timestamp(bedroomb_room_primary_last_moved, 0)) > (room_sensor_stale_hours * 3600) %}\n{% set secondary_stale = bedroomb_room_secondary_last_moved in ['unknown', 'unavailable', 'none', ''] or (as_timestamp(now()) - as_timestamp(bedroomb_room_secondary_last_moved, 0)) > (room_sensor_stale_hours * 3600) %}\n{% set primary_healthy = primary_battery > room_sensor_min_battery and primary_room is not none and not primary_stale %}\n{% set secondary_healthy = secondary_battery > room_sensor_min_battery and secondary_room is not none and not secondary_stale %}\n{% if primary_healthy %}\n  {% set candidate_source = 'primary_room_sensor' %}\n  {% set candidate = primary_room %}\n{% elif secondary_healthy %}\n  {% set candidate_source = 'secondary_room_sensor' %}\n  {% set candidate = secondary_room %}\n{% else %}\n  {% set candidate_source = 'climate_fallback' %}\n  {% set candidate = ac_temp %}\n{% endif %}\n{% set room_ac_conflict = candidate_source != 'climate_fallback' and ac_temp is not none and (candidate - ac_temp) | abs >= room_ac_disagreement_threshold %}\n{% if room_ac_conflict %}\n  {% set source = 'conflict_worst_case' %}\n  {% set effective = ([candidate, ac_temp] | max) if climate_mode == 'summer' else ([candidate, ac_temp] | min) if climate_mode == 'winter' else candidate %}\n{% else %}\n  {% set source = candidate_source %}\n  {% set effective = candidate %}\n{% endif %}"
+: "{% set livingr_room_last_moved = states('input_datetime.livingr_room_last_moved') %}\n{% set room_stale = livingr_room_last_moved in ['unknown', 'unavailable', 'none', ''] or (as_timestamp(now()) - as_timestamp(livingr_room_last_moved, 0)) > (room_sensor_stale_hours * 3600) %}\n{% set room_healthy = battery > room_sensor_min_battery and room is not none and not room_stale %}\n{% set room_ac_conflict = room_healthy and ac_temp is not none and (room - ac_temp) | abs >= room_ac_disagreement_threshold %}\n{% if room_healthy and room_ac_conflict %}\n  {% set source = 'conflict_worst_case' %}\n  {% set effective = ([room, ac_temp] | max) if climate_mode == 'summer' else ([room, ac_temp] | min) if climate_mode == 'winter' else room %}\n{% elif room_healthy %}\n  {% set source = 'room_sensor' %}\n  {% set effective = room %}\n{% else %}\n  {% set source = 'climate_fallback' %}\n  {% set effective = ac_temp %}\n{% endif %}\n{% set livingr_manual_override_until = states('input_datetime.livingr_manual_override_until') %}\n{% set manual_override_active = is_state('input_boolean.livingr_manual_override', 'on') and livingr_manual_override_until not in ['unknown', 'unavailable', 'none'] and as_timestamp(livingr_manual_override_until, 0) > as_timestamp(now()) %}\n{% set allow_night_cooling = is_state('input_boolean.livingr_allow_night_cooling', 'on') %}"}
 {% set day_summer_target = mild_summer_target if climate_mode == 'summer' and outside is not none and outside < mild_outside_threshold else hot_summer_target if climate_mode == 'summer' else none %}
 {% set target = night_summer_target if night_sleep_window and climate_mode == 'summer' else day_summer_target if climate_mode == 'summer' else night_winter_target if night_sleep_window and climate_mode == 'winter' else winter_target if climate_mode == 'winter' else none %}
 {% set active_cooling_start_delta = night_cooling_start_delta if night_sleep_window else cooling_start_delta %}
@@ -225,7 +227,7 @@ function replaceSetupTemplates(config, prefix) {
   return patched;
 }
 
-(async () => {
+async function applyAndRearm() {
   const living = await rest("/api/config/automation/config/1770077000010");
   await rest("/api/config/automation/config/1770077000010", "POST", replaceSetupTemplates(living, "livingr"));
   const bed = await rest("/api/config/automation/config/1770077000021");
@@ -237,11 +239,17 @@ function replaceSetupTemplates(config, prefix) {
       "automation.test_aircon_bedroomb_room_sensor_comfort_band",
     ],
   });
-  console.log(JSON.stringify({
+  return {
     updated: ["1770077000010", "1770077000021"],
     rearmed: [
       "automation.test_aircon_livingr_room_sensor_comfort_band",
       "automation.test_aircon_bedroomb_room_sensor_comfort_band",
     ],
-  }, null, 2));
-})();
+  };
+}
+
+module.exports = { buildSetup, setupBlock, templateWith, replaceSetupTemplates, applyAndRearm };
+
+if (require.main === module) {
+  applyAndRearm().then((result) => console.log(JSON.stringify(result, null, 2)));
+}

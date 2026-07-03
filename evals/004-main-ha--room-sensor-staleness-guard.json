@@ -1,0 +1,31 @@
+{
+  "id": "004",
+  "branch": "main",
+  "name": "ha--room-sensor-staleness-guard",
+  "category": "ha",
+  "description": "LivingR/BedroomB comfort-band automations now cross-check the Xiaomi room temperature sensor against the climate unit's own ac_temp sensor. A room sensor whose numeric value has not genuinely moved (>=0.1C) in the configured window (default 5h) is treated as stale and the climate's own sensor is used instead. If both sensors are healthy but disagree beyond a tunable threshold (default 1.5C), the less comfortable (worst-case) reading wins instead of blindly trusting the room sensor.",
+  "implementation": {
+    "files": [
+      "tools/home-assistant-live/setup_room_sensor_staleness_guard.js",
+      "tools/home-assistant-live/sync_climate_setup_templates.js",
+      "tools/home-assistant-live/apply_climate_setup_templates_config_only.js"
+    ],
+    "changes": [
+      "setup_room_sensor_staleness_guard.js: creates 7 input_number helpers (per-sensor last_seen_value for livingr_room, bedroomb_room_primary, bedroomb_room_secondary; per-room stale_hours + ac_disagreement_threshold for livingr and bedroomb) and 3 input_datetime *_last_moved helpers, plus a new automation id=1770077000099 '[TEST] AirCon - room sensor fluctuation tracker' (entity: automation.test_aircon_room_sensor_fluctuation_tracker) that updates *_last_seen_value/*_last_moved only when a tracked sensor's numeric state changes by >=0.1C, independent of unavailable-flicker state churn",
+      "sync_climate_setup_templates.js: buildSetup() now computes *_stale (now - last_moved > stale_hours) and *_healthy (not stale) per room sensor, then source/effective picks 'conflict_worst_case' (max in summer / min in winter / room value in neutral mode) when a healthy room sensor disagrees with ac_temp by >= the room's disagreement threshold; refactored from a self-executing IIFE into exported buildSetup/replaceSetupTemplates/applyAndRearm (module.exports) gated by require.main so callers can reuse the template patch without forcing automation.turn_on",
+      "apply_climate_setup_templates_config_only.js: new thin wrapper that calls replaceSetupTemplates for both automations and reloads config WITHOUT calling automation.turn_on, since the comfort automations are intentionally left disabled while the user runs the AC in manual mode"
+    ]
+  },
+  "validation": {
+    "type": "functional_test",
+    "checks": [
+      "C1: input_number/input_datetime helper list (WS) contains all 7 input_number + 3 input_datetime staleness-guard helpers with expected defaults (stale_hours=5, ac_disagreement_threshold=1.5, last_seen_value=0.0 pre-fluctuation)",
+      "C2: automation.test_aircon_room_sensor_fluctuation_tracker exists (REST config, id=1770077000099) and state=on",
+      "C3: /api/template render of buildSetup('livingr') + debug tail returns source/effective/room_stale/room_healthy keys with sane types (no template error)",
+      "C4: /api/template render of buildSetup('bedroomb') + debug tail returns source/effective/primary_stale/secondary_stale/primary_healthy/secondary_healthy keys with sane types (no template error)",
+      "C5: after apply_climate_setup_templates_config_only.js runs, both automation.test_aircon_livingr_room_sensor_comfort_band and automation.test_aircon_bedroomb_room_sensor_comfort_band remain state=off (config patched but NOT re-armed, since user has manual override active)"
+    ]
+  },
+  "status": "pass",
+  "notes": "Eval created retroactively after live implementation (helpers + tracker automation + template patch already applied before this eval file existed) at the user's explicit request to follow the eval lifecycle going forward. C1-C2 already confirmed by setup_room_sensor_staleness_guard.js's own live output during implementation; C5 already confirmed by apply_climate_setup_templates_config_only.js's own live output. Re-verified C1/C2/C5 independently via /api/states + /api/config/automation/config, and exercised C3/C4 via /api/template (not previously run): both livingr and bedroomb room sensors currently render room_stale/primary_stale/secondary_stale=True (no genuine value movement recorded yet since the fluctuation tracker was just created) and source correctly falls back to 'climate_fallback' using ac_temp, confirming the staleness guard is live and behaving as designed. Does not cover: automation.turn_on / program_requested re-enable (explicitly deferred, pending user go-ahead) and the Terraform backport of this same logic into main.tf (tracked separately, not yet done)."
+}
