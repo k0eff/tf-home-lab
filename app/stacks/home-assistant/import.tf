@@ -232,3 +232,8 @@ import {
   to = homeassistant_automation.test_aircon_room_sensor_fluctuation_tracker
   id = "1770077000099"
 }
+
+import {
+  to = homeassistant_automation.test_aircon_xiaomi_miot_self_heal_reload
+  id = "1770077000100"
+}

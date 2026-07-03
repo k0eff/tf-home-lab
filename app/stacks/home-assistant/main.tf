@@ -1909,6 +1909,55 @@ resource "homeassistant_automation" "test_aircon_room_sensor_fluctuation_tracker
   ])
 }
 
+resource "homeassistant_automation" "test_aircon_xiaomi_miot_self_heal_reload" {
+  alias       = "[TEST] AirCon - xiaomi_miot self-heal reload"
+  description = "If none of the tracked room sensors (LivingR, BedroomB primary/secondary) have genuinely moved within input_number.xiaomi_miot_self_heal_stale_hours, reloads the xiaomi_miot config entry to force a fresh cloud session. Gated by input_number.xiaomi_miot_self_heal_cooldown_hours so a real gateway/network outage does not cause reload looping. Posts a persistent_notification either way so a recurring failure (which a session reload cannot fix, e.g. the physical gateway itself being offline) is visible."
+  mode        = "single"
+
+  trigger = jsonencode([
+    {
+      platform = "time_pattern"
+      minutes  = "/30"
+      id       = "periodic_check"
+    },
+  ])
+
+  condition = jsonencode([
+    {
+      condition      = "template"
+      value_template = "{{ [(as_timestamp(now()) - as_timestamp(states('input_datetime.livingr_room_last_moved'))) / 3600, (as_timestamp(now()) - as_timestamp(states('input_datetime.bedroomb_room_primary_last_moved'))) / 3600, (as_timestamp(now()) - as_timestamp(states('input_datetime.bedroomb_room_secondary_last_moved'))) / 3600] | min >= states('input_number.xiaomi_miot_self_heal_stale_hours') | float }}"
+    },
+    {
+      condition      = "template"
+      value_template = "{{ (as_timestamp(now()) - as_timestamp(states('input_datetime.xiaomi_miot_self_heal_last_attempt'))) / 3600 >= states('input_number.xiaomi_miot_self_heal_cooldown_hours') | float }}"
+    },
+  ])
+
+  action = jsonencode([
+    {
+      service = "input_datetime.set_datetime"
+      data = {
+        entity_id = "input_datetime.xiaomi_miot_self_heal_last_attempt"
+        timestamp = "{{ as_timestamp(now()) }}"
+      }
+    },
+    {
+      service = "homeassistant.reload_config_entry"
+      data = {
+        entry_id = "9122367f13a71956c9cd948ada6e2632"
+      }
+    },
+    {
+      service = "persistent_notification.create"
+      data = {
+        notification_id = "xiaomi_miot_self_heal"
+        title           = "Xiaomi cloud self-heal reload"
+        message         = "Room sensors (LivingR/BedroomB) had not genuinely moved in over {{ states('input_number.xiaomi_miot_self_heal_stale_hours') }}h, so the xiaomi_miot integration was reloaded. If this keeps recurring, a session reload will not help - check whether the physical Aqara/Lumi gateway shows offline in the Mi Home app."
+      }
+    },
+  ])
+}
+
 resource "homeassistant_automation" "bedroomb_program_delayed_toggle" {
   alias       = "[TEST] AirCon - BedroomB - delayed program toggle"
   description = "Debounces BedroomB program on/off requests from input_boolean.bedroomb_program_requested. The dashboard button changes only the requested state; after 5 seconds this automation applies the last requested state to the real comfort-band automation."
