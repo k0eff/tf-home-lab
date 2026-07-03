@@ -43,6 +43,38 @@ Before it does anything, it must pass these guards:
 - An outside temperature source is available.
 - Manual override is not active.
 
+### Room Temperature Source
+
+The comfort loop needs a room temperature (`effective`) to compare against
+`target`. It is derived from up to two inputs per room: the Xiaomi room
+sensor(s) and the climate entity's own `current_temperature` (`ac_temp`).
+
+- LivingR has one room sensor. BedroomB has a primary and a secondary
+  (ceiling) room sensor, tried in that order.
+- A room sensor counts as a *candidate* only if its battery is above the
+  configured minimum and it has a numeric state.
+- A candidate room sensor is also checked for **staleness**: a dedicated
+  tracker automation (`automation.test_aircon_room_sensor_fluctuation_tracker`)
+  records, per sensor, the last time its numeric value moved by at least
+  `0.1`C (`input_datetime.<key>_last_moved`). If the sensor value has not
+  genuinely moved within `input_number.<room>_room_sensor_stale_hours`
+  (default 5h), the candidate is treated as stale and skipped, even if HA
+  still reports its state as a normal number.
+  - This is deliberately independent of `last_changed`/`last_updated`.
+    A cloud-polled sensor that flickers `unavailable` and then reports the
+    exact same cached value again still resets `last_changed`, so
+    `last_changed` alone cannot detect a frozen reading.
+- If no room sensor candidate is healthy, `effective` falls back to `ac_temp`
+  (`source = 'climate_fallback'`).
+- If a healthy room sensor candidate disagrees with `ac_temp` by at least
+  `input_number.<room>_room_ac_disagreement_threshold` (default 1.5C), the
+  loop does not trust the room sensor blindly. Instead it takes the less
+  comfortable of the two readings for the current season
+  (`source = 'conflict_worst_case'`): the max in summer, the min in winter,
+  the room reading in neutral mode. Otherwise it uses the healthy candidate
+  directly (`source = 'room_sensor'` / `'primary_room_sensor'` /
+  `'secondary_room_sensor'`).
+
 The outside source fallback order is:
 
 1. Venti In room sensor minus the configured offset, when its battery is healthy.
@@ -127,3 +159,19 @@ running in an appropriate mode. It must not start cooling/heating by itself.
   if the climate state drifts or MELCloud turns the unit off.
 - Split helper families make the dashboard, comfort loop, and override loop
   disagree about which mode is active.
+- **Xiaomi cloud auth failure freezes room sensors.** The `xiaomi_miot`
+  integration polls Xiaomi's cloud; when that session breaks
+  (`MiCloudException: "get device udid error"`, code -704220009), it affects
+  every cloud-polled sensor on the linked Xiaomi account at once. Affected
+  sensors keep reporting their last cached numeric value, with occasional
+  `unavailable` flickers back to that same value — "force renew device"
+  does not help, since it re-hits the same broken cloud session. Comfort
+  automations with no staleness guard will trust the frozen reading
+  indefinitely. See [Room Temperature Source](#room-temperature-source) for
+  the fluctuation-tracking + worst-case conflict-resolution guard that
+  detects and works around this.
+- A staleness guard based on `last_changed` alone would miss the failure
+  mode above: an `unavailable` flicker back to the *same* cached value still
+  resets `last_changed`, even though the underlying reading never actually
+  moved. The guard must track genuine value movement (see the fluctuation
+  tracker automation), not state-string churn.

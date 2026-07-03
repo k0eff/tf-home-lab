@@ -82,6 +82,11 @@ launchctl kickstart -k gui/$(id -u)/com.krasi.ha-energy-table-refresh
 
 ### Apply / Patch scripts
 
+- `apply_climate_setup_templates_config_only.js`
+  - patch-ва LivingR/BedroomB live comfort automation config-а със същата template логика като `sync_climate_setup_templates.js`, БЕЗ да пуска `automation.turn_on` — за случаите, когато automation-ите умишлено стоят изключени (напр. manual climate control) и искаме само коригираната логика да е staged
+  - writes: да
+  - subcommands: няма
+  - options: няма
 - `add_bedroomb_tf_block.js`
   - добавя/генерира Terraform блок за BedroomB свързан с live HA workflow
   - writes: да
