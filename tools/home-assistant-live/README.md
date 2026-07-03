@@ -182,6 +182,11 @@ launchctl kickstart -k gui/$(id -u)/com.krasi.ha-energy-table-refresh
   - writes: да
   - subcommands: няма
   - options: няма
+- `setup_xiaomi_miot_self_heal.js`
+  - създава `input_number.xiaomi_miot_self_heal_stale_hours`/`_cooldown_hours` + `input_datetime.xiaomi_miot_self_heal_last_attempt` и automation, който reload-ва `xiaomi_miot` config entry-то, когато нито един room sensor не се е движил в конфигурирания прозорец (root-cause mitigation към staleness guard-а от `setup_room_sensor_staleness_guard.js`)
+  - writes: да
+  - subcommands: няма
+  - options: няма
 - `sync_climate_setup_templates.js`
   - синхронизира live climate setup template-ите за LivingR и BedroomB с актуалната логика за time windows, target selection и sensor fallback, после re-arm-ва двата comfort automation-а
   - writes: да

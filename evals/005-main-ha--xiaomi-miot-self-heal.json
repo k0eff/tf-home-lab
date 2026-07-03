@@ -1,0 +1,28 @@
+{
+  "id": "005",
+  "branch": "main",
+  "name": "ha--xiaomi-miot-self-heal",
+  "category": "ha",
+  "description": "Self-heal automation that reloads the xiaomi_miot config entry when none of the tracked room sensors (LivingR, BedroomB primary/secondary) have genuinely moved within a configurable window, so a broken Xiaomi cloud session recovers automatically instead of waiting for the room sensor staleness guard (eval 004) to fall back to the climate unit's own sensor indefinitely. A cooldown helper prevents reload looping when the real cause is a hardware/network outage that a session reload cannot fix.",
+  "implementation": {
+    "files": [
+      "tools/home-assistant-live/setup_xiaomi_miot_self_heal.js"
+    ],
+    "changes": [
+      "setup_xiaomi_miot_self_heal.js: creates input_number.xiaomi_miot_self_heal_stale_hours (default 3, deliberately below the room sensor staleness guard's default 5h so self-heal gets a chance to recover the cloud session before the comfort loop needs its climate-fallback), input_number.xiaomi_miot_self_heal_cooldown_hours (default 6) and input_datetime.xiaomi_miot_self_heal_last_attempt, plus automation id=1770077000100 '[TEST] AirCon - xiaomi_miot self-heal reload' (entity: automation.test_aircon_xiaomi_miot_self_heal_reload). Trigger: time_pattern every 30 minutes. Condition: minimum of the three *_last_moved staleness durations (reusing the fluctuation tracker helpers from eval 004/setup_room_sensor_staleness_guard.js) is >= stale_hours AND cooldown since last reload attempt has elapsed. Action: stamps last_attempt=now, calls homeassistant.reload_config_entry with the discovered xiaomi_miot config entry_id (9122367f13a71956c9cd948ada6e2632), then posts a persistent_notification explaining the reload happened and that a recurring failure means a session reload will not help (points at the physical Aqara/Lumi gateway as the likely real cause)."
+    ]
+  },
+  "validation": {
+    "type": "functional_test",
+    "checks": [
+      "C1: root cause investigated live before writing the automation - /api/error_log showed repeated MiCloudException (code -704220009, 'get device udid error') and 'Error while decrypting response ... de.api.io.mi.com' warnings across the whole xiaomi_miot account (router, toothbrush, door sensors, room sensors, gateway arming entity), confirming this is a cloud-session/account-level failure mode, not one broken entity",
+      "C2: user independently confirmed via the Mi Home app that the physical Aqara/Lumi gateway (lumi.gateway.mgl03) showed 'offline 1d' - the actual root cause this run was a real hardware/network outage, not just a stale HA-side cloud session; user power-cycled the gateway and re-paired it in Mi Home before this automation was built",
+      "C3: after the physical gateway came back and the xiaomi_miot config entry (9122367f13a71956c9cd948ada6e2632) was reloaded via POST /api/config/config_entries/entry/{id}/reload, room sensor last_updated timestamps advanced, one sensor showed a genuine value change (26 -> 25), and MiCloudException errors dropped from dozens/day to a single occurrence in the following ~2h window",
+      "C4: fluctuation tracker (eval 004) confirmed real movement post-recovery - all three input_datetime.*_last_moved helpers advanced to fresh timestamps and automation.test_aircon_room_sensor_fluctuation_tracker's last_triggered updated accordingly",
+      "C5: setup_xiaomi_miot_self_heal.js run live - input_number.xiaomi_miot_self_heal_stale_hours=3.0, input_number.xiaomi_miot_self_heal_cooldown_hours=6.0, input_datetime.xiaomi_miot_self_heal_last_attempt created, automation.test_aircon_xiaomi_miot_self_heal_reload state=on (confirmed via /api/states after the script's own AUTOMATION_ENTITY_ID constant bug - missing the '_reload' suffix HA derived from the alias slug - was caught and fixed)",
+      "C6: both condition templates rendered successfully via /api/template with no errors and plausible booleans: the stale-check returned False immediately after the sensors had just recovered (correct - not stale), the cooldown-check returned True since last_attempt was still at its creation-time default (correct - eligible to fire)"
+    ]
+  },
+  "status": "pass",
+  "notes": "Follows on from eval 004 (room sensor staleness guard), which only detects and works around a frozen room sensor at read time. This eval adds a root-cause mitigation: proactively reload the xiaomi_miot cloud session before the read-time guard's fallback window (5h) is reached. Mid-investigation, discovered via /api/error_log that the failure is an account-wide Xiaomi cloud issue, not a single-entity bug - and the user separately confirmed via the Mi Home app that the actual root cause this time was the physical gateway being offline for a day, which no HA-side reload could have fixed. The automation is intentionally scoped to the fixable half of the problem (stale HA-side cloud session) and explicitly notifies the user to check the physical gateway when reloads don't resolve the staleness, since that failure mode looks identical from HA's side. Does not cover: automatic detection of physical gateway offline state (would require polling Xiaomi cloud's device-online API directly, out of scope here) or automation.turn_on / program_requested re-enable for the comfort automations (still deferred, pending user go-ahead)."
+}
