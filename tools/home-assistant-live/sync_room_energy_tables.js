@@ -26,6 +26,18 @@ const rooms = [
     pinnedFile: null,
     pinnedRows: [],
   },
+  {
+    key: "bedrooms",
+    title: "BedroomS",
+    viewPath: "beds",
+    energyEntity: "sensor.v537_spalniam_energy_2",
+    outputFile: "bedrooms_energy_table.md",
+    pinnedFile: "bedrooms_energy_table_pinned.md",
+    pinnedRows: [
+      { day: "07 Jun", start: 388.7, end: 390.3, usage: 1.6 },
+      { day: "08 Jun", start: 390.4, end: 392.0, usage: 1.6 },
+    ],
+  },
 ];
 
 function startOfLocalDay(date) {

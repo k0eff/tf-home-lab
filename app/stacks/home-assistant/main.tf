@@ -2226,7 +2226,6 @@ resource "homeassistant_automation" "v2_aircon_bedroomb_flap_swing_door_sensor" 
   alias       = "[V2] Aircon - BedroomB - flap swing - door sensor"
   description = "Prevents aircon flap from staying open in SpalniaG. Robust trigger with 3s debounce and 10m retry."
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -2290,7 +2289,6 @@ resource "homeassistant_automation" "v2_aircon_bedroomb_flap_swing_door_sensor" 
 resource "homeassistant_automation" "v2_aircon_bedrooms_fan_high_no_motion" {
   alias       = "[V2] Aircon - BedroomS - fan HIGH - no motion"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -2360,7 +2358,6 @@ resource "homeassistant_automation" "v2_aircon_bedrooms_fan_high_no_motion" {
 resource "homeassistant_automation" "v2_aircon_bedrooms_fan_mid_motion" {
   alias       = "[V2] Aircon - BedroomS - fan MID - motion"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -2431,7 +2428,6 @@ resource "homeassistant_automation" "v2_aircon_bedrooms_fan_mid_motion" {
 resource "homeassistant_automation" "v2_aircon_bedrooms_flap_vane_down_v2" {
   alias       = "[V2] AirCon - bedroomS - flap vane down v2"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -2494,7 +2490,6 @@ resource "homeassistant_automation" "v2_aircon_bedrooms_flap_vane_down_v2" {
 resource "homeassistant_automation" "v2_aircon_enter_home_set_temp" {
   alias       = "[V2] AirCon enter home set temp"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -2615,7 +2610,6 @@ resource "homeassistant_automation" "v2_aircon_enter_home_set_temp" {
 resource "homeassistant_automation" "v2_aircon_livingr_fan_high_no_motion" {
   alias       = "[V2] Aircon - LivingR - fan HIGH no motion"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -2685,7 +2679,6 @@ resource "homeassistant_automation" "v2_aircon_livingr_fan_high_no_motion" {
 resource "homeassistant_automation" "v2_aircon_livingr_fan_mid_motion" {
   alias       = "[V2] Aircon - LivingR - fan MID motion"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -2755,7 +2748,6 @@ resource "homeassistant_automation" "v2_aircon_livingr_fan_mid_motion" {
 resource "homeassistant_automation" "v2_aircon_leave_home_set_temp" {
   alias       = "[V2] AirCon leave home set temp"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -2864,7 +2856,6 @@ resource "homeassistant_automation" "v2_aircon_leave_home_set_temp" {
 resource "homeassistant_automation" "v2_aircon_bedroom_b_flap_vane_down_v2" {
   alias       = "[V2] AirCon - Bedroom B - flap vane down v2"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -2941,7 +2932,6 @@ resource "homeassistant_automation" "v2_aircon_bedroom_b_flap_vane_down_v2" {
 resource "homeassistant_automation" "v2_aircon_living_r_flap_vane_down_v2_horiz_split" {
   alias       = "[V2] AirCon - Living R - flap vane down v2, horiz split"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -3018,7 +3008,6 @@ resource "homeassistant_automation" "v2_aircon_living_r_flap_vane_down_v2_horiz_
 resource "homeassistant_automation" "v2_aircon_livingr_morning_set_temp_winter" {
   alias       = "[V2] AirCon - LivingR - morning - set temp - winter"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -3091,7 +3080,6 @@ resource "homeassistant_automation" "v2_aircon_livingr_morning_set_temp_winter" 
 resource "homeassistant_automation" "v2_aircon_livingr_night_set_fan_summer" {
   alias       = "[V2] Aircon - LivingR - night - set fan - summer"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -3148,7 +3136,6 @@ resource "homeassistant_automation" "v2_aircon_livingr_night_set_fan_summer" {
 resource "homeassistant_automation" "v2_aircon_livingr_night_set_temp_winter" {
   alias       = "[V2] AirCon - LivingR - night - set temp - winter"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -3212,7 +3199,6 @@ resource "homeassistant_automation" "v2_aircon_livingr_night_set_temp_winter" {
 resource "homeassistant_automation" "v2_aircon_morning_bedroomb_winter" {
   alias       = "[V2] AirCon - morning - BedroomB - winter"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -3295,7 +3281,6 @@ resource "homeassistant_automation" "v2_aircon_morning_bedroomb_winter" {
 resource "homeassistant_automation" "v2_aircon_night_bedroomb_winter" {
   alias       = "[V2] Aircon - night - BedroomB - winter"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -3368,7 +3353,6 @@ resource "homeassistant_automation" "v2_aircon_night_bedroomb_winter" {
 resource "homeassistant_automation" "v2_aircon_night_bedroomb_summer" {
   alias       = "[V2] Aircon - night - BedroomB - summer"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -3443,7 +3427,6 @@ resource "homeassistant_automation" "v2_aircon_night_bedroomb_summer" {
 resource "homeassistant_automation" "v2_aircon_night_bedrooms_summer" {
   alias       = "[V2] Aircon - night - BedroomS - summer"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -3507,7 +3490,6 @@ resource "homeassistant_automation" "v2_aircon_night_bedrooms_summer" {
 resource "homeassistant_automation" "v2_aircon_morning_bedroomb_summer" {
   alias       = "[V2] AirCon - morning - BedroomB - summer"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -3561,7 +3543,6 @@ resource "homeassistant_automation" "v2_aircon_morning_bedroomb_summer" {
 resource "homeassistant_automation" "v2_aircon_livingr_night_set_temp_summer" {
   alias       = "[V2] AirCon - LivingR - night - set temp - summer"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -3609,7 +3590,6 @@ resource "homeassistant_automation" "v2_aircon_livingr_night_set_temp_summer" {
 resource "homeassistant_automation" "v2_light_entry_motion_turn_on_motion" {
   alias       = "[V2] Light-Entry-motion-turn-on-motion"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -3637,7 +3617,6 @@ resource "homeassistant_automation" "v2_light_entry_motion_turn_on_motion" {
 resource "homeassistant_automation" "v2_aircon_livingr_morning_set_temp_summer" {
   alias       = "[V2] AirCon - LivingR - morning - set temp - summer"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -3701,7 +3680,6 @@ resource "homeassistant_automation" "v2_aircon_livingr_morning_set_temp_summer" 
 resource "homeassistant_automation" "v2_hol_hidden_light_off" {
   alias       = "[V2] Hol - hidden light - off"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -3725,7 +3703,6 @@ resource "homeassistant_automation" "v2_hol_hidden_light_off" {
 resource "homeassistant_automation" "v2_hol_hidden_light_on_sunset" {
   alias       = "[V2] Hol - hidden light - on - sunset"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -3750,7 +3727,6 @@ resource "homeassistant_automation" "v2_hol_hidden_light_on_sunset" {
 resource "homeassistant_automation" "v2_light_bania_off" {
   alias       = "[V2] Light - bania - OFF"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -3783,7 +3759,6 @@ resource "homeassistant_automation" "v2_light_bania_off" {
 resource "homeassistant_automation" "v2_light_bania_on" {
   alias       = "[V2] Light - bania - ON"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -3811,7 +3786,6 @@ resource "homeassistant_automation" "v2_light_bania_on" {
 resource "homeassistant_automation" "v2_light_entry_motion_turn_off_motion" {
   alias       = "[V2] Light-Entry-motion-turn-off-motion"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -3844,7 +3818,6 @@ resource "homeassistant_automation" "v2_light_entry_motion_turn_off_motion" {
 resource "homeassistant_automation" "v2_light_hol_turn_off" {
   alias       = "[V2] Light-Hol-turn-off"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -3917,7 +3890,6 @@ resource "homeassistant_automation" "v2_light_hol_turn_off" {
 resource "homeassistant_automation" "v2_light_kuhnia_motion_off" {
   alias       = "[V2] Light - Kuhnia - motion - off"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -3953,7 +3925,6 @@ resource "homeassistant_automation" "v2_light_kuhnia_motion_off" {
 resource "homeassistant_automation" "v2_light_kuhnia_motion_on" {
   alias       = "[V2] Light - Kuhnia - motion - on "
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -3984,7 +3955,6 @@ resource "homeassistant_automation" "v2_light_kuhnia_motion_on" {
 resource "homeassistant_automation" "v2_light_bedroomb_turn_all_on_when_single_turned_on" {
   alias       = "[V2] Light - BedroomB - turn all on - when Single turned on"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -4050,7 +4020,6 @@ resource "homeassistant_automation" "v2_light_bedroomb_turn_all_on_when_single_t
 resource "homeassistant_automation" "v2_light_toilet_off" {
   alias       = "[V2] Light - toilet - OFF"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -4083,7 +4052,6 @@ resource "homeassistant_automation" "v2_light_toilet_off" {
 resource "homeassistant_automation" "v2_light_toilet_on" {
   alias       = "[V2] Light - toilet - ON"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -4111,7 +4079,6 @@ resource "homeassistant_automation" "v2_light_toilet_on" {
 resource "homeassistant_automation" "v2_aircon_livingr_flap_swing_door_sensor" {
   alias       = "[V2] Aircon - LivingR - flap swing door sensor"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -4164,7 +4131,6 @@ resource "homeassistant_automation" "v2_aircon_livingr_flap_swing_door_sensor" {
 resource "homeassistant_automation" "v2_light_bedroomb_turn_all_off_when_single_turned_off" {
   alias       = "[V2] Light - BedroomB - turn all off - when single turned off"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -4230,7 +4196,6 @@ resource "homeassistant_automation" "v2_light_bedroomb_turn_all_off_when_single_
 resource "homeassistant_automation" "v2_aircon_morning_bedrooms_summer" {
   alias       = "[V2] AirCon - morning - BedroomS - summer"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -4271,7 +4236,6 @@ resource "homeassistant_automation" "v2_aircon_morning_bedrooms_summer" {
 resource "homeassistant_automation" "v2_tag_away" {
   alias       = "[V2] Tag Away"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -4333,7 +4297,6 @@ resource "homeassistant_automation" "v2_tag_away" {
 resource "homeassistant_automation" "v2_tag_home" {
   alias       = "[V2] Tag Home"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -4374,7 +4337,6 @@ resource "homeassistant_automation" "v2_tag_home" {
 resource "homeassistant_automation" "v2_vacuum_at_19h_all_away" {
   alias       = "[V2] Vacuum at 19h all away"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -4426,7 +4388,6 @@ resource "homeassistant_automation" "v2_vacuum_at_19h_all_away" {
 resource "homeassistant_automation" "v2_vacuum_when_all_are_away" {
   alias       = "[V2] Vacuum when all are away"
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -4508,7 +4469,6 @@ resource "homeassistant_automation" "v2_venti_timer_daily_02_30_fan_3_bypass" {
   alias       = "[V2] Venti - timer - daily 02:30 - fan 3 bypass"
   description = "Copied from MELCloud Venti timer on 2026-06-07."
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -4551,7 +4511,6 @@ resource "homeassistant_automation" "v2_venti_timer_daily_03_00_fan_2_bypass" {
   alias       = "[V2] Venti - timer - daily 03:00 - fan 2 bypass"
   description = "Copied from MELCloud Venti timer on 2026-06-07."
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -4594,7 +4553,6 @@ resource "homeassistant_automation" "v2_venti_timer_daily_04_00_fan_3_bypass" {
   alias       = "[V2] Venti - timer - daily 04:00 - fan 3 bypass"
   description = "Copied from MELCloud Venti timer on 2026-06-07."
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -4637,7 +4595,6 @@ resource "homeassistant_automation" "v2_venti_timer_daily_06_30_fan_2_bypass" {
   alias       = "[V2] Venti - timer - daily 06:30 - fan 2 bypass"
   description = "Copied from MELCloud Venti timer on 2026-06-07."
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -4680,7 +4637,6 @@ resource "homeassistant_automation" "v2_venti_timer_weekdays_08_00_fan_3_bypass"
   alias       = "[V2] Venti - timer - weekdays 08:00 - fan 3 bypass"
   description = "Copied from MELCloud Venti timer on 2026-06-07."
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -4734,7 +4690,6 @@ resource "homeassistant_automation" "v2_venti_timer_daily_10_00_fan_2_bypass" {
   alias       = "[V2] Venti - timer - daily 10:00 - fan 2 bypass"
   description = "Copied from MELCloud Venti timer on 2026-06-07."
   mode        = "single"
-  initial_state = true
 
   trigger = jsonencode([
     {
@@ -5486,7 +5441,7 @@ resource "homeassistant_automation" "test_aircon_bedrooms_room_sensor_comfort_ba
           "conditions" = [
             {
               "condition" = "template"
-              "value_template" = "{% set room = states('sensor.miaomiaoce_t2_f7cc_temperature_humidity_sensor') | float(none) %}\n{% set battery = states('sensor.miaomiaoce_t2_f7cc_battery_level') | float(0) %}\n{% set ac_temp = state_attr('climate.v537_spalniam_2', 'current_temperature') | float(none) %}\n{% set outside_venti_raw = states('sensor.miaomiaoce_t2_56fa_temperature_humidity_sensor') | float(none) %}\n{% set outside_venti_battery = states('sensor.miaomiaoce_t2_56fa_battery_level') | float(0) %}\n{% set outside_weather = state_attr('weather.forecast_home', 'temperature') | float(none) %}\n{% set outside_venti_device = states('sensor.venti_outside_temperature') | float(none) %}\n{% set room_sensor_min_battery = states('input_number.bedrooms_room_sensor_min_battery') | float(10) %}\n{% set outside_sensor_min_battery = states('input_number.bedrooms_outside_sensor_min_battery') | float(10) %}\n{% set room_sensor_stale_hours = states('input_number.bedrooms_room_sensor_stale_hours') | float(5) %}\n{% set room_ac_disagreement_threshold = states('input_number.bedrooms_room_ac_disagreement_threshold') | float(1.5) %}\n{% set outside_venti_offset = states('input_number.bedrooms_venti_in_offset') | float(2) %}\n{% set winter_outside_threshold = states('input_number.bedrooms_winter_outside_threshold') | float(8) %}\n{% set summer_outside_threshold = states('input_number.bedrooms_summer_outside_threshold') | float(15) %}\n{% set mild_outside_threshold = states('input_number.bedrooms_mild_outside_threshold') | float(28) %}\n{% set mild_summer_target = states('input_number.bedrooms_target_temperature') | float(23.9) %}\n{% set hot_summer_target = states('input_number.bedrooms_hot_summer_target') | float(24.0) %}\n{% set winter_target = states('input_number.bedrooms_winter_target') | float(22) %}\n{% set night_summer_target = states('input_number.bedrooms_summer_night_target') | float(30) %}\n{% set night_winter_target = states('input_number.bedrooms_winter_night_target') | float(19) %}\n{% set night_cooling_start_delta = states('input_number.bedrooms_night_cooling_start_delta') | float(0.4) %}\n{% set night_winter_start_delta = states('input_number.bedrooms_night_winter_start_delta') | float(0.5) %}\n{% set cooling_start_delta = states('input_number.bedrooms_cooling_start_delta') | float(0.4) %}\n{% set winter_start_delta = states('input_number.bedrooms_winter_start_delta') | float(0.5) %}\n{% set coil_cooldown_minutes = states('input_number.bedrooms_coil_cooldown_minutes') | float(7) %}\n{% set cooling_fan_mode = states('input_number.bedrooms_cooling_fan_mode') | int(2) %}\n{% set bedrooms_night_start_value = states('input_datetime.bedrooms_night_start') if states('input_datetime.bedrooms_night_start') not in ['unknown', 'unavailable', 'none'] else '00:30:00' %}\n{% set bedrooms_day_start_value = states('input_datetime.bedrooms_day_start') if states('input_datetime.bedrooms_day_start') not in ['unknown', 'unavailable', 'none'] else '08:30:00' %}\n{% set bedrooms_air_clean_start_value = states('input_datetime.bedrooms_air_clean_start') if states('input_datetime.bedrooms_air_clean_start') not in ['unknown', 'unavailable', 'none'] else '03:00:00' %}\n{% set bedrooms_air_clean_end_value = states('input_datetime.bedrooms_air_clean_end') if states('input_datetime.bedrooms_air_clean_end') not in ['unknown', 'unavailable', 'none'] else '06:00:00' %}\n{% set bedrooms_night_start_parts = bedrooms_night_start_value.split(':') %}\n{% set bedrooms_day_start_parts = bedrooms_day_start_value.split(':') %}\n{% set bedrooms_air_clean_start_parts = bedrooms_air_clean_start_value.split(':') %}\n{% set bedrooms_air_clean_end_parts = bedrooms_air_clean_end_value.split(':') %}\n{% set night_start_minutes = (bedrooms_night_start_parts[0] | int) * 60 + (bedrooms_night_start_parts[1] | int) %}\n{% set day_start_minutes = (bedrooms_day_start_parts[0] | int) * 60 + (bedrooms_day_start_parts[1] | int) %}\n{% set air_clean_start_minutes = (bedrooms_air_clean_start_parts[0] | int) * 60 + (bedrooms_air_clean_start_parts[1] | int) %}\n{% set air_clean_end_minutes = (bedrooms_air_clean_end_parts[0] | int) * 60 + (bedrooms_air_clean_end_parts[1] | int) %}\n{% set minutes_now = now().hour * 60 + now().minute %}\n{% set night_sleep_window = (minutes_now >= night_start_minutes and minutes_now < day_start_minutes) if night_start_minutes < day_start_minutes else (minutes_now >= night_start_minutes or minutes_now < day_start_minutes) %}\n{% set night_air_clean_window = (minutes_now >= air_clean_start_minutes and minutes_now < air_clean_end_minutes) if air_clean_start_minutes < air_clean_end_minutes else (minutes_now >= air_clean_start_minutes or minutes_now < air_clean_end_minutes) %}\n{% set night_window = night_air_clean_window %}\n{% set day_air_clean_window = minutes_now >= day_start_minutes and minutes_now <= 1439 %}\n{% if outside_venti_battery > outside_sensor_min_battery and outside_venti_raw is not none %}\n  {% set outside_source = 'venti_in_adjusted' %}\n  {% set outside = outside_venti_raw - outside_venti_offset %}\n{% elif outside_weather is not none %}\n  {% set outside_source = 'weather_forecast_home' %}\n  {% set outside = outside_weather %}\n{% elif outside_venti_device is not none %}\n  {% set outside_source = 'venti_device_outside' %}\n  {% set outside = outside_venti_device %}\n{% else %}\n  {% set outside_source = 'none' %}\n  {% set outside = none %}\n{% endif %}\n{% set climate_mode = 'winter' if outside is not none and outside <= winter_outside_threshold else 'summer' if outside is not none and outside >= summer_outside_threshold else 'neutral' %}\n{% set bedrooms_room_last_moved = states('input_datetime.bedrooms_room_last_moved') %}\n{% set room_stale = bedrooms_room_last_moved in ['unknown', 'unavailable', 'none', ''] or (as_timestamp(now()) - as_timestamp(bedrooms_room_last_moved, 0)) > (room_sensor_stale_hours * 3600) %}\n{% set room_healthy = battery > room_sensor_min_battery and room is not none and not room_stale %}\n{% set room_ac_conflict = room_healthy and ac_temp is not none and (room - ac_temp) | abs >= room_ac_disagreement_threshold %}\n{% if room_healthy and room_ac_conflict %}\n  {% set source = 'conflict_worst_case' %}\n  {% set effective = ([room, ac_temp] | max) if climate_mode == 'summer' else ([room, ac_temp] | min) if climate_mode == 'winter' else room %}\n{% elif room_healthy %}\n  {% set source = 'room_sensor' %}\n  {% set effective = room %}\n{% else %}\n  {% set source = 'climate_fallback' %}\n  {% set effective = ac_temp %}\n{% endif %}\n{% set bedrooms_manual_override_until = states('input_datetime.bedrooms_manual_override_until') %}\n{% set manual_override_active = is_state('input_boolean.bedrooms_manual_override', 'on') and bedrooms_manual_override_until not in ['unknown', 'unavailable', 'none'] and as_timestamp(bedrooms_manual_override_until, 0) > as_timestamp(now()) %}\n{% set allow_night_cooling = is_state('input_boolean.bedrooms_allow_night_cooling', 'on') %}\n{% set away_p1 = states('person.krasimir_koev') %}\n{% set away_p2 = states('person.ema_yosifova') %}\n{% set away_by_presence = away_p1 == 'not_home' and away_p2 == 'not_home' %}\n{% set m1 = states('binary_sensor.motion01') %}\n{% set m1_changed = states.binary_sensor.motion01.last_changed %}\n{% set m2 = states('binary_sensor.motion03') %}\n{% set m2_changed = states.binary_sensor.motion03.last_changed %}\n{% set m3 = states('binary_sensor.motion04spalniam') %}\n{% set m3_changed = states.binary_sensor.motion04spalniam.last_changed %}\n{% set motion_quiet_30m = (m1 == 'off' and (as_timestamp(now()) - as_timestamp(m1_changed)) >= 1800) and (m2 == 'off' and (as_timestamp(now()) - as_timestamp(m2_changed)) >= 1800) and (m3 == 'off' and (as_timestamp(now()) - as_timestamp(m3_changed)) >= 1800) %}\n{% set away_by_no_motion = day_air_clean_window and motion_quiet_30m %}\n{% set allow_away_saving = is_state('input_boolean.bedrooms_allow_away_saving', 'on') %}\n{% set away = allow_away_saving and (away_by_presence or away_by_no_motion) %}\n{% set away_relax_delta = (states('input_number.bedrooms_away_relax_delta') | float(3)) if away else 0 %}\n{% set day_summer_target = mild_summer_target if climate_mode == 'summer' and outside is not none and outside < mild_outside_threshold else hot_summer_target if climate_mode == 'summer' else none %}\n{% set target = night_summer_target if night_sleep_window and climate_mode == 'summer' else day_summer_target if climate_mode == 'summer' else night_winter_target if night_sleep_window and climate_mode == 'winter' else winter_target if climate_mode == 'winter' else none %}\n{% set active_cooling_start_delta = (night_cooling_start_delta if night_sleep_window else cooling_start_delta) + away_relax_delta %}\n{% set active_winter_start_delta = (night_winter_start_delta if night_sleep_window else winter_start_delta) + away_relax_delta %}\n{% set learned_overshoot = [0, [1, states('input_number.bedrooms_cooling_overshoot') | float(0.2)] | min] | max %}\n{% set cooling_stop_room_temp = states('input_number.bedrooms_cooling_stop_room_temp') | float(0) %}\n{% set error = effective - target if effective is not none and target is not none else none %}\n{% set dynamic_setpoint = ([16, [31, ((ac_temp - error) * 2) | round(0) / 2] | min] | max) if ac_temp is not none and error is not none else none %}\n{{ not night_air_clean_window and climate_mode == 'summer' and effective is not none and target is not none and effective >= target + active_cooling_start_delta and dynamic_setpoint is not none }}"
+              "value_template" = "{% set room = states('sensor.miaomiaoce_t2_f7cc_temperature_humidity_sensor') | float(none) %}\n{% set battery = states('sensor.miaomiaoce_t2_f7cc_battery_level') | float(0) %}\n{% set ac_temp = state_attr('climate.v537_spalniam_2', 'current_temperature') | float(none) %}\n{% set outside_venti_raw = states('sensor.miaomiaoce_t2_56fa_temperature_humidity_sensor') | float(none) %}\n{% set outside_venti_battery = states('sensor.miaomiaoce_t2_56fa_battery_level') | float(0) %}\n{% set outside_weather = state_attr('weather.forecast_home', 'temperature') | float(none) %}\n{% set outside_venti_device = states('sensor.venti_outside_temperature') | float(none) %}\n{% set room_sensor_min_battery = states('input_number.bedrooms_room_sensor_min_battery') | float(10) %}\n{% set outside_sensor_min_battery = states('input_number.bedrooms_outside_sensor_min_battery') | float(10) %}\n{% set room_sensor_stale_hours = states('input_number.bedrooms_room_sensor_stale_hours') | float(5) %}\n{% set room_ac_disagreement_threshold = states('input_number.bedrooms_room_ac_disagreement_threshold') | float(1.5) %}\n{% set outside_venti_offset = states('input_number.bedrooms_venti_in_offset') | float(2) %}\n{% set winter_outside_threshold = states('input_number.bedrooms_winter_outside_threshold') | float(8) %}\n{% set summer_outside_threshold = states('input_number.bedrooms_summer_outside_threshold') | float(15) %}\n{% set mild_outside_threshold = states('input_number.bedrooms_mild_outside_threshold') | float(28) %}\n{% set mild_summer_target = states('input_number.bedrooms_target_temperature') | float(23.9) %}\n{% set hot_summer_target = states('input_number.bedrooms_hot_summer_target') | float(24.0) %}\n{% set winter_target = states('input_number.bedrooms_winter_target') | float(22) %}\n{% set night_summer_target = states('input_number.bedrooms_summer_night_target') | float(30) %}\n{% set night_winter_target = states('input_number.bedrooms_winter_night_target') | float(19) %}\n{% set night_cooling_start_delta = states('input_number.bedrooms_night_cooling_start_delta') | float(0.4) %}\n{% set night_winter_start_delta = states('input_number.bedrooms_night_winter_start_delta') | float(0.5) %}\n{% set cooling_start_delta = states('input_number.bedrooms_cooling_start_delta') | float(0.4) %}\n{% set winter_start_delta = states('input_number.bedrooms_winter_start_delta') | float(0.5) %}\n{% set coil_cooldown_minutes = states('input_number.bedrooms_coil_cooldown_minutes') | float(7) %}\n{% set cooling_fan_mode = states('input_number.bedrooms_cooling_fan_mode') | int(2) %}\n{% set bedrooms_night_start_value = states('input_datetime.bedrooms_night_start') if states('input_datetime.bedrooms_night_start') not in ['unknown', 'unavailable', 'none'] else '00:30:00' %}\n{% set bedrooms_day_start_value = states('input_datetime.bedrooms_day_start') if states('input_datetime.bedrooms_day_start') not in ['unknown', 'unavailable', 'none'] else '08:30:00' %}\n{% set bedrooms_air_clean_start_value = states('input_datetime.bedrooms_air_clean_start') if states('input_datetime.bedrooms_air_clean_start') not in ['unknown', 'unavailable', 'none'] else '03:00:00' %}\n{% set bedrooms_air_clean_end_value = states('input_datetime.bedrooms_air_clean_end') if states('input_datetime.bedrooms_air_clean_end') not in ['unknown', 'unavailable', 'none'] else '06:00:00' %}\n{% set bedrooms_night_start_parts = bedrooms_night_start_value.split(':') %}\n{% set bedrooms_day_start_parts = bedrooms_day_start_value.split(':') %}\n{% set bedrooms_air_clean_start_parts = bedrooms_air_clean_start_value.split(':') %}\n{% set bedrooms_air_clean_end_parts = bedrooms_air_clean_end_value.split(':') %}\n{% set night_start_minutes = (bedrooms_night_start_parts[0] | int) * 60 + (bedrooms_night_start_parts[1] | int) %}\n{% set day_start_minutes = (bedrooms_day_start_parts[0] | int) * 60 + (bedrooms_day_start_parts[1] | int) %}\n{% set air_clean_start_minutes = (bedrooms_air_clean_start_parts[0] | int) * 60 + (bedrooms_air_clean_start_parts[1] | int) %}\n{% set air_clean_end_minutes = (bedrooms_air_clean_end_parts[0] | int) * 60 + (bedrooms_air_clean_end_parts[1] | int) %}\n{% set minutes_now = now().hour * 60 + now().minute %}\n{% set night_sleep_window = (minutes_now >= night_start_minutes and minutes_now < day_start_minutes) if night_start_minutes < day_start_minutes else (minutes_now >= night_start_minutes or minutes_now < day_start_minutes) %}\n{% set night_air_clean_window = (minutes_now >= air_clean_start_minutes and minutes_now < air_clean_end_minutes) if air_clean_start_minutes < air_clean_end_minutes else (minutes_now >= air_clean_start_minutes or minutes_now < air_clean_end_minutes) %}\n{% set night_window = night_air_clean_window %}\n{% set day_air_clean_window = minutes_now >= day_start_minutes and minutes_now <= 1439 %}\n{% if outside_venti_battery > outside_sensor_min_battery and outside_venti_raw is not none %}\n  {% set outside_source = 'venti_in_adjusted' %}\n  {% set outside = outside_venti_raw - outside_venti_offset %}\n{% elif outside_weather is not none %}\n  {% set outside_source = 'weather_forecast_home' %}\n  {% set outside = outside_weather %}\n{% elif outside_venti_device is not none %}\n  {% set outside_source = 'venti_device_outside' %}\n  {% set outside = outside_venti_device %}\n{% else %}\n  {% set outside_source = 'none' %}\n  {% set outside = none %}\n{% endif %}\n{% set climate_mode = 'winter' if outside is not none and outside <= winter_outside_threshold else 'summer' if outside is not none and outside >= summer_outside_threshold else 'neutral' %}\n{% set bedrooms_room_last_moved = states('input_datetime.bedrooms_room_last_moved') %}\n{% set room_stale = bedrooms_room_last_moved in ['unknown', 'unavailable', 'none', ''] or (as_timestamp(now()) - as_timestamp(bedrooms_room_last_moved, 0)) > (room_sensor_stale_hours * 3600) %}\n{% set room_healthy = battery > room_sensor_min_battery and room is not none and not room_stale %}\n{% set room_ac_conflict = room_healthy and ac_temp is not none and (room - ac_temp) | abs >= room_ac_disagreement_threshold %}\n{% if room_healthy and room_ac_conflict %}\n  {% set source = 'conflict_worst_case' %}\n  {% set effective = ([room, ac_temp] | max) if climate_mode == 'summer' else ([room, ac_temp] | min) if climate_mode == 'winter' else room %}\n{% elif room_healthy %}\n  {% set source = 'room_sensor' %}\n  {% set effective = room %}\n{% else %}\n  {% set source = 'climate_fallback' %}\n  {% set effective = ac_temp %}\n{% endif %}\n{% set bedrooms_manual_override_until = states('input_datetime.bedrooms_manual_override_until') %}\n{% set manual_override_active = is_state('input_boolean.bedrooms_manual_override', 'on') and bedrooms_manual_override_until not in ['unknown', 'unavailable', 'none'] and as_timestamp(bedrooms_manual_override_until, 0) > as_timestamp(now()) %}\n{% set allow_night_cooling = is_state('input_boolean.bedrooms_allow_night_cooling', 'on') %}\n{% set away_p1 = states('person.krasimir_koev') %}\n{% set away_p2 = states('person.ema_yosifova') %}\n{% set away_by_presence = away_p1 == 'not_home' and away_p2 == 'not_home' %}\n{% set m1 = states('binary_sensor.motion01') %}\n{% set m1_changed = states.binary_sensor.motion01.last_changed %}\n{% set m2 = states('binary_sensor.motion03') %}\n{% set m2_changed = states.binary_sensor.motion03.last_changed %}\n{% set m3 = states('binary_sensor.motion04spalniam') %}\n{% set m3_changed = states.binary_sensor.motion04spalniam.last_changed %}\n{% set motion_quiet_30m = (m1 == 'off' and (as_timestamp(now()) - as_timestamp(m1_changed)) >= 1800) and (m2 == 'off' and (as_timestamp(now()) - as_timestamp(m2_changed)) >= 1800) and (m3 == 'off' and (as_timestamp(now()) - as_timestamp(m3_changed)) >= 1800) %}\n{% set away_by_no_motion = day_air_clean_window and motion_quiet_30m %}\n{% set allow_away_saving = is_state('input_boolean.bedrooms_allow_away_saving', 'on') %}\n{% set away = allow_away_saving and (away_by_presence or away_by_no_motion) %}\n{% set away_relax_delta = (states('input_number.bedrooms_away_relax_delta') | float(3)) if away else 0 %}\n{% set day_summer_target = mild_summer_target if climate_mode == 'summer' and outside is not none and outside < mild_outside_threshold else hot_summer_target if climate_mode == 'summer' else none %}\n{% set target = night_summer_target if night_sleep_window and climate_mode == 'summer' else day_summer_target if climate_mode == 'summer' else night_winter_target if night_sleep_window and climate_mode == 'winter' else winter_target if climate_mode == 'winter' else none %}\n{% set active_cooling_start_delta = (night_cooling_start_delta if night_sleep_window else cooling_start_delta) + away_relax_delta %}\n{% set active_winter_start_delta = (night_winter_start_delta if night_sleep_window else winter_start_delta) + away_relax_delta %}\n{% set learned_overshoot = [0, [1, states('input_number.bedrooms_cooling_overshoot') | float(0.2)] | min] | max %}\n{% set cooling_stop_room_temp = states('input_number.bedrooms_cooling_stop_room_temp') | float(0) %}\n{% set error = effective - target if effective is not none and target is not none else none %}\n{% set dynamic_setpoint = ([16, [31, ((ac_temp - error) * 2) | round(0) / 2] | min] | max) if ac_temp is not none and error is not none else none %}\n{{ not night_air_clean_window and climate_mode == 'summer' and (not night_sleep_window or allow_night_cooling) and effective is not none and target is not none and effective >= target + active_cooling_start_delta and dynamic_setpoint is not none }}"
             },
             {
               "condition" = "template"
