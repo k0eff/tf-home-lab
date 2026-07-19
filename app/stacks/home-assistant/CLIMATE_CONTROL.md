@@ -1,22 +1,26 @@
 # Home Assistant Climate Control Contract
 
-This document describes the intended behavior for the LivingR and BedroomB
-climate programs. Home Assistant live helpers are the runtime source of truth
-for tunable parameters. Terraform backports those settings and automations so
-the setup can be recreated, reviewed, and versioned.
+This document describes the intended behavior for the LivingR, BedroomB, and
+BedroomS climate programs. Home Assistant live helpers are the runtime source
+of truth for tunable parameters. Terraform backports those settings and
+automations so the setup can be recreated, reviewed, and versioned.
 
 ## Scope
 
-- LivingR and BedroomB use the same control algorithm.
+- LivingR, BedroomB, and BedroomS use the same control algorithm.
 - Room-specific differences should be data only: entity IDs, sensor priority,
   targets, thresholds, fan modes, and schedule helpers.
 - Dashboards are the control surface for runtime parameters.
 - Terraform must not introduce a second set of helper names for the same
   concept.
+- BedroomS was the last room to receive this algorithm and historically
+  lagged behind LivingR/BedroomB on feature parity (away detection, night
+  cooling gate). When adding a feature to one room, check the other two for
+  the same gap before assuming it's already equalized.
 
 ## Canonical Helper Names
 
-Each room uses the room prefix, either `livingr` or `bedroomb`.
+Each room uses the room prefix: `livingr`, `bedroomb`, or `bedrooms`.
 
 - Program enable intent: `input_boolean.<room>_program_requested`
 - Manual override active flag: `input_boolean.<room>_manual_override`
@@ -75,6 +79,52 @@ dynamic_setpoint = climate_current_temperature - error
 
 The setpoint is rounded to 0.5 C and clamped to the supported climate range.
 
+## Away Detection And Energy Saving
+
+All three rooms relax the comfort band by `<room>_away_relax_delta` (added to
+both the cooling and winter start deltas) when away is true:
+
+```text
+away_by_presence  = both tracked people are not_home
+away_by_no_motion = day_air_clean_window and no motion on motion01, motion03,
+                     or motion04spalniam for 30+ minutes
+away = <room>_allow_away_saving is on and (away_by_presence or away_by_no_motion)
+```
+
+Note the motion check is whole-house, not per-room: all three rooms compute
+`away` from the same three motion sensors. A room's own automation cannot
+tell "someone is in this specific room" from "someone is home and moving
+anywhere" - it only relaxes when the whole house looks quiet.
+
+## Return Boost (BedroomS only, as of 2026-07-19)
+
+The away-relax band trades comfort for energy savings while the room is
+unoccupied. Left alone, undoing that trade after someone returns is slow: the
+comfort loop only nudges the dynamic setpoint, and at the room's normal quiet
+fan speed the real room air does not mix fast enough to reach target in a
+reasonable time (~1 hour observed) even though the AC's own internal sensor
+reports approaching setpoint much sooner - it reads the air right next to the
+unit, not the room.
+
+To fix that without giving up the quiet fan speed once the room is actually
+comfortable:
+
+- `input_boolean.bedrooms_was_away` mirrors the room's own `away` value every
+  automation run.
+- The moment `away` flips from true to false (return-from-away edge, detected
+  by comparing to `bedrooms_was_away` before overwriting it), the automation
+  stamps `input_datetime.bedrooms_away_ended_at = now()` and logs it.
+- For `input_number.bedrooms_return_boost_minutes` minutes after that
+  timestamp, `cooling_fan_mode` resolves to
+  `input_number.bedrooms_return_boost_fan_mode` (default 5) instead of the
+  normal `input_number.bedrooms_cooling_fan_mode` (default 2). After the
+  window elapses, fan speed drops back to normal automatically - no separate
+  automation, no manual reset.
+
+This is intentionally not yet backported to LivingR/BedroomB. If the same
+"AC's own sensor lies about the real room" pattern shows up there, this is
+the fix to copy - check for it before re-diagnosing from scratch.
+
 ## Manual Override
 
 Manual override is a hard ownership mode. While it is active and its expiry time
@@ -127,3 +177,17 @@ running in an appropriate mode. It must not start cooling/heating by itself.
   if the climate state drifts or MELCloud turns the unit off.
 - Split helper families make the dashboard, comfort loop, and override loop
   disagree about which mode is active.
+- The setup block (all the `{% set %}` lines computing `target`, `effective`,
+  `active_cooling_start_delta`, `cooling_fan_mode`, etc.) is duplicated as a
+  literal prefix inside every top-level condition and every choose-branch's
+  condition/action data - there is no shared `locals`/macro at the live-HA
+  level, only in older hand-written Terraform text. A live patch that edits
+  "the" setup block by finding just one match (e.g. `cfg.condition[0]`, or
+  one branch's `conditions[0]`) silently leaves 20-30 other copies unpatched,
+  including copies inside `action` service-call `data` fields (e.g. the
+  `dynamic_setpoint` used in `climate.set_temperature`), not just inside
+  `condition`/`value_template` keys. This happened twice in one session
+  (BedroomB's `away_relax_delta` wiring, then BedroomS's `cooling_fan_mode`
+  boost) before the fix: after any setup-block edit, grep the full fetched
+  config JSON for the old and new text and confirm the old count is exactly
+  zero before saving - do not trust a single successful-looking edit.
