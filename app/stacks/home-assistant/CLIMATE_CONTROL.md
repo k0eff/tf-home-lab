@@ -96,7 +96,7 @@ Note the motion check is whole-house, not per-room: all three rooms compute
 tell "someone is in this specific room" from "someone is home and moving
 anywhere" - it only relaxes when the whole house looks quiet.
 
-## Return Boost (BedroomS only, as of 2026-07-19)
+## Return Boost (all 3 rooms, as of 2026-07-19)
 
 The away-relax band trades comfort for energy savings while the room is
 unoccupied. Left alone, undoing that trade after someone returns is slow: the
@@ -107,23 +107,26 @@ reports approaching setpoint much sooner - it reads the air right next to the
 unit, not the room.
 
 To fix that without giving up the quiet fan speed once the room is actually
-comfortable:
+comfortable, every room has:
 
-- `input_boolean.bedrooms_was_away` mirrors the room's own `away` value every
+- `input_boolean.<room>_was_away` mirrors the room's own `away` value every
   automation run.
 - The moment `away` flips from true to false (return-from-away edge, detected
-  by comparing to `bedrooms_was_away` before overwriting it), the automation
-  stamps `input_datetime.bedrooms_away_ended_at = now()` and logs it.
-- For `input_number.bedrooms_return_boost_minutes` minutes after that
+  by comparing to `<room>_was_away` before overwriting it), the automation
+  stamps `input_datetime.<room>_away_ended_at = now()` and logs it.
+- For `input_number.<room>_return_boost_minutes` minutes after that
   timestamp, `cooling_fan_mode` resolves to
-  `input_number.bedrooms_return_boost_fan_mode` (default 5) instead of the
-  normal `input_number.bedrooms_cooling_fan_mode` (default 2). After the
+  `input_number.<room>_return_boost_fan_mode` (default 5) instead of the
+  normal `input_number.<room>_cooling_fan_mode` (default 2). After the
   window elapses, fan speed drops back to normal automatically - no separate
   automation, no manual reset.
 
-This is intentionally not yet backported to LivingR/BedroomB. If the same
-"AC's own sensor lies about the real room" pattern shows up there, this is
-the fix to copy - check for it before re-diagnosing from scratch.
+All six related helpers (`allow_away_saving`, `away_relax_delta`, `was_away`,
+`away_ended_at`, `return_boost_minutes`, `return_boost_fan_mode`) are exposed
+on each room's dashboard view (`living`/`bedb`/`beds`) in an "Away & Return
+Boost" entities card, so tuning does not require editing automation YAML -
+`was_away`/`away_ended_at` are shown for visibility into current state even
+though they're written by the automation, not meant for direct editing.
 
 ## Manual Override
 
