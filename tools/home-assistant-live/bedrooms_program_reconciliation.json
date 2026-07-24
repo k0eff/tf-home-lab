@@ -1,0 +1,35 @@
+{
+  "id": "1770077000110",
+  "alias": "[TEST] AirCon - BedroomS - program state reconciliation",
+  "description": "Fixes the one-way desync between the dashboard Program request tile (input_boolean.bedrooms_program_requested) and the real comfort-band automation. Root cause confirmed 2026-07-24: Ema disabled automation.test_aircon_bedrooms_room_sensor_comfort_band directly (not through the dashboard button) at 01:38 local; the Program request tile kept showing ON all day because nothing ever synced the real automation state back into the request boolean. This automation watches the real automation entity and mirrors its on/off state into the request boolean whenever they disagree, so the dashboard always reflects reality regardless of how the automation got enabled/disabled (dashboard button, HA UI, developer tools, restart). Safe against loops: [TEST] AirCon - BedroomS - delayed program toggle only re-applies the state the automation is already in when it reacts to this write, so it is a no-op, not a ping-pong.",
+  "trigger": [
+    { "platform": "state", "entity_id": "automation.test_aircon_bedrooms_room_sensor_comfort_band", "to": "on", "id": "went_on" },
+    { "platform": "state", "entity_id": "automation.test_aircon_bedrooms_room_sensor_comfort_band", "to": "off", "id": "went_off" }
+  ],
+  "condition": [
+    { "condition": "template", "value_template": "{{ trigger.to_state.state != states('input_boolean.bedrooms_program_requested') }}" }
+  ],
+  "action": [
+    {
+      "choose": [
+        {
+          "alias": "Real automation turned on but request said off - fix the tile",
+          "conditions": [{ "condition": "trigger", "id": ["went_on"] }],
+          "sequence": [
+            { "service": "input_boolean.turn_on", "target": { "entity_id": "input_boolean.bedrooms_program_requested" } },
+            { "service": "logbook.log", "data": { "name": "[TEST] BedroomS program reconciliation", "message": "Program request tile was OFF but automation is ON - corrected tile to match reality", "entity_id": "input_boolean.bedrooms_program_requested" } }
+          ]
+        },
+        {
+          "alias": "Real automation turned off but request said on - fix the tile",
+          "conditions": [{ "condition": "trigger", "id": ["went_off"] }],
+          "sequence": [
+            { "service": "input_boolean.turn_off", "target": { "entity_id": "input_boolean.bedrooms_program_requested" } },
+            { "service": "logbook.log", "data": { "name": "[TEST] BedroomS program reconciliation", "message": "Program request tile was ON but automation is OFF - corrected tile to match reality", "entity_id": "input_boolean.bedrooms_program_requested" } }
+          ]
+        }
+      ]
+    }
+  ],
+  "mode": "queued"
+}
