@@ -299,7 +299,7 @@ resource "homeassistant_automation" "vacuum_when_all_are_away" {
 
 resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_band" {
   alias       = "[TEST] AirCon - LivingR - room sensor comfort band"
-  description = "Test automation for LivingR climate.hol_2. Uses Living tv 1 temperature sensor while its battery is above the configurable room-sensor battery helper; falls back to climate current_temperature below that. Climate mode is based on configurable outside thresholds and an outside temperature fallback chain: Venti In 7 minus the configurable offset, then weather.forecast_home temperature, then sensor.venti_outside_temperature. Dynamic setpoint = climate_sensor_temperature - (effective_room_temperature - target). The main comfort target, start delta, hot-summer target, outdoor thresholds, winter target, fan mode, coil cool-down minutes, learned overshoot, Venti offset, and sensor battery thresholds are all exposed through LivingR tuning input_number helpers. Mild summer is tuned as a configurable comfort band: cooling starts above target + start delta and moves to fan_only at target + learned overshoot. The learned overshoot is updated from each cool-down cycle using 70/30 smoothing. Night sleep window 00:30-08:30 blocks comfort cooling/heating and keeps the climate off, except the 03:00-06:00 air-clean window which uses fan_only + fan 5 in both seasons. During daytime, no LivingR motion for 15m raises fan to 5 only while the climate is already in fan_only; motion restores fan 3 in fan_only. Uses climate.set_hvac_mode: off because this MELCloud climate entity does not support climate.turn_off. RETURN BOOST: while input_boolean.livingr_was_away was on and away_now becomes false (motion resumes or someone comes home), input_datetime.livingr_away_ended_at is stamped with now(). For input_number.livingr_return_boost_minutes minutes after that timestamp, cooling_fan_mode is forced to input_number.livingr_return_boost_fan_mode instead of the normal input_number.livingr_cooling_fan_mode, so air actually circulates fast enough to pull the real room down to target quickly after an away period, instead of slowly chasing a compensated setpoint at low fan speed."
+  description = "Test automation for LivingR climate.hol_2. Uses Living tv 1 temperature sensor while its battery is above the configurable room-sensor battery helper; falls back to climate current_temperature below that. Climate mode is based on configurable outside thresholds and an outside temperature fallback chain: Venti In 7 minus the configurable offset, then weather.forecast_home temperature, then sensor.venti_outside_temperature. Dynamic setpoint = climate_sensor_temperature - (effective_room_temperature - target). The main comfort target, start delta, hot-summer target, outdoor thresholds, winter target, fan mode, coil cool-down minutes, learned overshoot, Venti offset, and sensor battery thresholds are all exposed through LivingR tuning input_number helpers. Mild summer is tuned as a configurable comfort band: cooling starts above target + start delta and moves to fan_only at target + learned overshoot. The learned overshoot is updated from each cool-down cycle using 70/30 smoothing. Night sleep window 00:30-08:30 blocks comfort cooling/heating and keeps the climate off, except the 03:00-06:00 air-clean window which uses fan_only + fan 5 in both seasons. During daytime, no LivingR motion for 15m raises fan to 5 only while the climate is already in fan_only; motion restores fan 3 in fan_only. Uses climate.set_hvac_mode: off because this MELCloud climate entity does not support climate.turn_off. RETURN BOOST: while input_boolean.livingr_was_away was on and away_now becomes false (motion resumes or someone comes home), input_datetime.livingr_away_ended_at is stamped with now(). For input_number.livingr_return_boost_minutes minutes after that timestamp, cooling_fan_mode is forced to input_number.livingr_return_boost_fan_mode instead of the normal input_number.livingr_cooling_fan_mode, so air actually circulates fast enough to pull the real room down to target quickly after an away period, instead of slowly chasing a compensated setpoint at low fan speed. Fixed 2026-07-24: the room sensor and the shared outside-proxy (Venti In 7) had been silently reading a dead xiaomi_miot entity since 2026-07-22 (Stage 5 platform split), which made the outside fallback chain land on weather.forecast_home - a currently-unreliable source (~13.7C on a hot day) - and pinned climate_mode to neutral, disabling cooling regardless of real room heat. Rewired to the live sensor.*_temperature entities (see apply_livingr_bedroomb_room_sensor_entity_fix.js). The companion room-sensor fluctuation tracker automation had the same dead-entity bug, which had frozen input_datetime.livingr_room_last_moved since 2026-07-22 and permanently forced this automation onto its climate_fallback path even after a room-sensor fix - fixed the same day (apply_room_sensor_fluctuation_tracker_entity_fix.js)."
   mode        = "single"
 
   trigger = jsonencode([
@@ -1146,7 +1146,7 @@ resource "homeassistant_automation" "livingr_manual_override" {
 
 resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_band" {
   alias       = "[TEST] AirCon - BedroomB - room sensor comfort band"
-  description = "Test automation for BedroomB climate.v357_spalniag_2. Uses BdrmB 11 as the primary room temperature sensor while its battery is above the configurable threshold; falls back to BedroomB ceil 2 if healthy, then to climate current_temperature. Based on the LivingR comfort-band algorithm, with BedroomB-specific targets and the active MELCloud-with-ERV entity. RETURN BOOST: while input_boolean.bedroomb_was_away was on and away_now becomes false (motion resumes or someone comes home), input_datetime.bedroomb_away_ended_at is stamped with now(). For input_number.bedroomb_return_boost_minutes minutes after that timestamp, cooling_fan_mode is forced to input_number.bedroomb_return_boost_fan_mode instead of the normal input_number.bedroomb_cooling_fan_mode, so air actually circulates fast enough to pull the real room down to target quickly after an away period, instead of slowly chasing a compensated setpoint at low fan speed."
+  description = "Test automation for BedroomB climate.v357_spalniag_2. Uses BdrmB 11 as the primary room temperature sensor while its battery is above the configurable threshold; falls back to BedroomB ceil 2 if healthy, then to climate current_temperature. Based on the LivingR comfort-band algorithm, with BedroomB-specific targets and the active MELCloud-with-ERV entity. RETURN BOOST: while input_boolean.bedroomb_was_away was on and away_now becomes false (motion resumes or someone comes home), input_datetime.bedroomb_away_ended_at is stamped with now(). For input_number.bedroomb_return_boost_minutes minutes after that timestamp, cooling_fan_mode is forced to input_number.bedroomb_return_boost_fan_mode instead of the normal input_number.bedroomb_cooling_fan_mode, so air actually circulates fast enough to pull the real room down to target quickly after an away period, instead of slowly chasing a compensated setpoint at low fan speed. Fixed 2026-07-24: both room sensors (primary and ceiling) and the shared outside-proxy (Venti In 7) had been silently reading a dead xiaomi_miot entity since 2026-07-22 (Stage 5 platform split), which made the outside fallback chain land on weather.forecast_home - a currently-unreliable source (~13.7C on a hot day) - and pinned climate_mode to neutral, disabling cooling regardless of real room heat. Rewired to the live sensor.*_temperature entities (see apply_livingr_bedroomb_room_sensor_entity_fix.js). The companion room-sensor fluctuation tracker automation had the same dead-entity bug for both sensors, which had frozen the last-moved timestamps since 2026-07-22 and permanently forced this automation onto its climate_fallback path even after a room-sensor fix - fixed the same day (apply_room_sensor_fluctuation_tracker_entity_fix.js). Note: this room picks its primary sensor over the ceiling sensor when both are healthy (not worst-case like BedroomS), so it can read at-target even while the ceiling air is warmer - by design, not a bug."
   mode        = "single"
 
   trigger = jsonencode([
@@ -1691,175 +1691,6 @@ resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_ba
         }
       ]
     }
-  ])
-}
-
-resource "homeassistant_automation" "test_aircon_room_sensor_fluctuation_tracker" {
-  alias       = "[TEST] AirCon - room sensor fluctuation tracker"
-  description = "Tracks the last time each cloud-backed Xiaomi room temperature sensor (LivingR, BedroomB primary, BedroomB secondary) genuinely changed value, independent of unavailable-flicker state churn. Feeds the staleness guard used by the room sensor comfort band automations to fall back to the climate entity's own sensor when the room sensor value has not moved in the configured window."
-  mode        = "queued"
-
-  trigger = jsonencode([
-    {
-      platform  = "state"
-      entity_id = "sensor.miaomiaoce_t2_1228_temperature"
-      id        = "livingr_room_sensor_changed"
-    },
-    {
-      platform  = "state"
-      entity_id = "sensor.miaomiaoce_t2_5249_temperature"
-      id        = "bedroomb_room_primary_sensor_changed"
-    },
-    {
-      platform  = "state"
-      entity_id = "sensor.miaomiaoce_t2_faea_temperature"
-      id        = "bedroomb_room_secondary_sensor_changed"
-    },
-  ])
-
-  condition = jsonencode([])
-
-  action = jsonencode([
-    {
-      choose = [
-        {
-          alias = "Track livingr_room fluctuation"
-          conditions = [
-            {
-              condition = "trigger"
-              id        = ["livingr_room_sensor_changed"]
-            },
-            {
-              condition      = "template"
-              value_template = "{{ trigger.to_state.state not in ['unknown', 'unavailable', 'none'] and (trigger.to_state.state | float(none)) is not none and ((trigger.to_state.state | float) - (states('input_number.livingr_room_last_seen_value') | float(trigger.to_state.state | float))) | abs >= 0.1 }}"
-            },
-          ]
-          sequence = [
-            {
-              service = "input_number.set_value"
-              data = {
-                entity_id = "input_number.livingr_room_last_seen_value"
-                value     = "{{ trigger.to_state.state | float }}"
-              }
-            },
-            {
-              service = "input_datetime.set_datetime"
-              data = {
-                entity_id = "input_datetime.livingr_room_last_moved"
-                timestamp = "{{ as_timestamp(now()) }}"
-              }
-            },
-          ]
-        },
-        {
-          alias = "Track bedroomb_room_primary fluctuation"
-          conditions = [
-            {
-              condition = "trigger"
-              id        = ["bedroomb_room_primary_sensor_changed"]
-            },
-            {
-              condition      = "template"
-              value_template = "{{ trigger.to_state.state not in ['unknown', 'unavailable', 'none'] and (trigger.to_state.state | float(none)) is not none and ((trigger.to_state.state | float) - (states('input_number.bedroomb_room_primary_last_seen_value') | float(trigger.to_state.state | float))) | abs >= 0.1 }}"
-            },
-          ]
-          sequence = [
-            {
-              service = "input_number.set_value"
-              data = {
-                entity_id = "input_number.bedroomb_room_primary_last_seen_value"
-                value     = "{{ trigger.to_state.state | float }}"
-              }
-            },
-            {
-              service = "input_datetime.set_datetime"
-              data = {
-                entity_id = "input_datetime.bedroomb_room_primary_last_moved"
-                timestamp = "{{ as_timestamp(now()) }}"
-              }
-            },
-          ]
-        },
-        {
-          alias = "Track bedroomb_room_secondary fluctuation"
-          conditions = [
-            {
-              condition = "trigger"
-              id        = ["bedroomb_room_secondary_sensor_changed"]
-            },
-            {
-              condition      = "template"
-              value_template = "{{ trigger.to_state.state not in ['unknown', 'unavailable', 'none'] and (trigger.to_state.state | float(none)) is not none and ((trigger.to_state.state | float) - (states('input_number.bedroomb_room_secondary_last_seen_value') | float(trigger.to_state.state | float))) | abs >= 0.1 }}"
-            },
-          ]
-          sequence = [
-            {
-              service = "input_number.set_value"
-              data = {
-                entity_id = "input_number.bedroomb_room_secondary_last_seen_value"
-                value     = "{{ trigger.to_state.state | float }}"
-              }
-            },
-            {
-              service = "input_datetime.set_datetime"
-              data = {
-                entity_id = "input_datetime.bedroomb_room_secondary_last_moved"
-                timestamp = "{{ as_timestamp(now()) }}"
-              }
-            },
-          ]
-        },
-      ]
-    },
-  ])
-}
-
-resource "homeassistant_automation" "test_aircon_xiaomi_miot_self_heal_reload" {
-  alias       = "[TEST] AirCon - xiaomi_miot self-heal reload"
-  description = "If none of the tracked room sensors (LivingR, BedroomB primary/secondary) have genuinely moved within input_number.xiaomi_miot_self_heal_stale_hours, reloads the xiaomi_miot config entry to force a fresh cloud session. Gated by input_number.xiaomi_miot_self_heal_cooldown_hours so a real gateway/network outage does not cause reload looping. Posts a persistent_notification either way so a recurring failure (which a session reload cannot fix, e.g. the physical gateway itself being offline) is visible."
-  mode        = "single"
-
-  trigger = jsonencode([
-    {
-      platform = "time_pattern"
-      minutes  = "/30"
-      id       = "periodic_check"
-    },
-  ])
-
-  condition = jsonencode([
-    {
-      condition      = "template"
-      value_template = "{{ [(as_timestamp(now()) - as_timestamp(states('input_datetime.livingr_room_last_moved'))) / 3600, (as_timestamp(now()) - as_timestamp(states('input_datetime.bedroomb_room_primary_last_moved'))) / 3600, (as_timestamp(now()) - as_timestamp(states('input_datetime.bedroomb_room_secondary_last_moved'))) / 3600] | min >= states('input_number.xiaomi_miot_self_heal_stale_hours') | float }}"
-    },
-    {
-      condition      = "template"
-      value_template = "{{ (as_timestamp(now()) - as_timestamp(states('input_datetime.xiaomi_miot_self_heal_last_attempt'))) / 3600 >= states('input_number.xiaomi_miot_self_heal_cooldown_hours') | float }}"
-    },
-  ])
-
-  action = jsonencode([
-    {
-      service = "input_datetime.set_datetime"
-      data = {
-        entity_id = "input_datetime.xiaomi_miot_self_heal_last_attempt"
-        timestamp = "{{ as_timestamp(now()) }}"
-      }
-    },
-    {
-      service = "homeassistant.reload_config_entry"
-      data = {
-        entry_id = "9122367f13a71956c9cd948ada6e2632"
-      }
-    },
-    {
-      service = "persistent_notification.create"
-      data = {
-        notification_id = "xiaomi_miot_self_heal"
-        title           = "Xiaomi cloud self-heal reload"
-        message         = "Room sensors (LivingR/BedroomB) had not genuinely moved in over {{ states('input_number.xiaomi_miot_self_heal_stale_hours') }}h, so the xiaomi_miot integration was reloaded. If this keeps recurring, a session reload will not help - check whether the physical Aqara/Lumi gateway shows offline in the Mi Home app."
-      }
-    },
   ])
 }
 
