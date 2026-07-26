@@ -1,0 +1,39 @@
+{
+  "id": "006",
+  "branch": "main",
+  "name": "ha--aircon-comfort-fan-boost",
+  "category": "ha",
+  "description": "Fan-speed boost for the 3 real climate units (LivingR climate.hol_2, BedroomB climate.v357_spalniag_2, BedroomS climate.v537_spalniam_2): when |error| (effective - target) crosses a configurable per-room threshold (default 1.0C) in either direction while the comfort program is active, fan_mode is forced to the room's boost speed regardless of current hvac/fan_only phase, with hysteresis (0.5C release margin) so it does not flap. Symmetric for summer overshoot and winter undershoot. Reuses the existing input_number.<prefix>_return_boost_fan_mode helper as the shared speed target for both this new error-threshold trigger and the pre-existing away-return trigger. A restart-safe input_boolean.<prefix>_fan_boost_active latch drives the new trigger's hysteresis. Includes a season-indicator dashboard card.",
+  "implementation": {
+    "files": [
+      "tools/home-assistant-live/apply_fan_speed_boost.js",
+      "tools/home-assistant-live/validate_fan_speed_boost.js",
+      "tools/home-assistant-live/add_season_indicator_card.js",
+      "tools/home-assistant-live/backport_fan_speed_boost_terraform.js",
+      "app/stacks/home-assistant/main.tf"
+    ],
+    "changes": [
+      "apply_fan_speed_boost.js: creates 9 helpers (per room: input_number.<prefix>_fan_boost_threshold default 1.0C, input_number.<prefix>_fan_boost_release_margin default 0.5C, input_boolean.<prefix>_fan_boost_active) via input_number/input_boolean create WS commands, name field deliberately chosen so HA's auto-slugify produces the intended entity id. Patches all 3 comfort-band automations live via /api/config/automation/config/{id}: extends the existing cooling_fan_mode template var to also trigger off the new latch (OR'd with the pre-existing return_boost_active), converts the 4 hardcoded fan_mode literals (night air-clean=5, daytime no-motion=5, daytime motion-restore=3, winter heat=3) into boost-aware templates via boostAwareLiteral(), and inserts a new 'Track fan-speed boost latch (error threshold trigger)' action (mirrors the existing 'Track away transition' action) that turns the latch on when |error| >= threshold and off when |error| < threshold - margin.",
+      "add_season_indicator_card.js: idempotent (find-or-update via a '### Comfort Program Season' content marker) markdown card inserted into the my-dash AirCon lovelace view, showing winter/summer per the existing month-based climate_mode definition (Dec/Jan/Feb = winter) plus live fan_boost_active state for all 3 rooms.",
+      "backport_fan_speed_boost_terraform.js: one-off anchor-based text-transform script (not meant to be re-run) that mirrors the live patch into main.tf's 3 comfort-band homeassistant_automation resource bodies. Reuses boostAwareLiteral from apply_fan_speed_boost.js; reimplements extendCoolingFanMode/the latch-action builder as HCL-safe variants because main.tf stores multi-line Jinja templates as one physical HCL line with literal 2-char '\\n' sequences, not real newline bytes, so the live-JSON-oriented functions would silently no-op against it.",
+      "main.tf: patched in place for test_aircon_livingr_room_sensor_comfort_band, test_aircon_bedroomb_room_sensor_comfort_band, test_aircon_bedrooms_room_sensor_comfort_band. BedroomS (hand-authored, not on the shared sync_climate_setup_templates.js generator) patched standalone with equivalent hand-duplicated logic rather than migrated onto the generator, per Ticket 02's resolution. No new Terraform resources or import.tf changes needed - helpers are not Terraform-tracked in this repo (confirmed zero pre-existing homeassistant_input_number/input_boolean resources)."
+    ]
+  },
+  "validation": {
+    "type": "functional_test",
+    "script": "tools/home-assistant-live/validate_fan_speed_boost.js",
+    "checks": [
+      "C1: all 9 helpers created live via input_number/list and input_boolean/list (create, not update - none pre-existed), entity ids match the intended <prefix>_fan_boost_threshold / _fan_boost_release_margin / _fan_boost_active slugs",
+      "C2: all 3 automations patched and re-enabled (automation.test_aircon_{livingr,bedroomb,bedrooms}_room_sensor_comfort_band state=on) after /api/services/automation/reload",
+      "C3: ON-condition template rendered True at error=1.5 (summer overshoot >= threshold) and error=-1.5 (winter undershoot, |error|>=threshold), True at exactly error=1.0 (>=), False at error=0.9 (below threshold)",
+      "C4: RELEASE-condition template rendered False at error=0.6 (above threshold-margin=0.5, should not release), True at error=0.4 and error=-0.4 (below threshold-margin, should release) - confirms hysteresis window (0.5-1.0C) behaves as intended, not a single flap-prone threshold",
+      "C5: cooling_fan_mode template returned normal speed (2) with latch off and no return-boost, and boosted speed (5, the return_boost_fan_mode value) under both latch-on and return_boost_active-on cases - confirms the two triggers share one output value via plain OR as decided in Ticket 01",
+      "C6: real-world confirmation post-deploy - live template query on actual HA state (not synthetic) returned season=summer, fan_boost_active: LivingR=False BedroomB=True BedroomS=False, proving BedroomB's boost genuinely latched on during a real hot period in production, not just in synthetic template tests",
+      "C7: season-indicator card inserted into my-dash AirCon view (idempotent - re-run would update in place via content marker, confirmed find-or-update logic, not append-duplicate)",
+      "C8: main.tf backport structurally sound - quote-aware brace/bracket/paren balance check shows zero delta ({: 1274/1274, [: 457/457, (: 178/178) after the 204-insertion/99-deletion patch; new 'Track fan-speed boost latch (error threshold trigger)' alias appears exactly 3 times (once per room) confirmed via terraform fmt -check -diff output at lines 606, 994, 3872",
+      "C9: terraform fmt diff around all 3 new latch-action blocks inspected directly - only pre-existing key-alignment reformatting (e.g. \"condition\" gaining extra spaces to align with \"value_template\"), identical in kind to fmt's complaints about unrelated, untouched automations elsewhere in the same file - confirms the backport introduced no new formatting or structural issues of its own"
+    ]
+  },
+  "status": "pass",
+  "notes": "Follows the wayfinder map 'Aircon Comfort Fan Boost' (.scratch/aircon-comfort-fan-boost/): Ticket 01 (effective fan-mode composition - plain OR of the two triggers, shared return_boost_fan_mode speed) and Ticket 02 (BedroomS patched standalone rather than migrated onto the shared generator, to avoid regression risk to LivingR/BedroomB) resolved via grilling, then implemented and shipped live plus backported to Terraform in one run per explicit user override of the skill's default one-ticket-per-session pacing. terraform validate/plan was not run (provider not initialized in this environment, out of scope to init here); soundness was instead verified via structural balance checks and a manual diff-hunk read around every insertion site, both confirming no non-whitespace anomalies. terraform fmt -check -diff still reports a large diff across the whole file, but this reflects pre-existing whitespace/alignment inconsistency present before this change (confirmed by inspecting hunks for unrelated automations) - not something introduced or in scope to fix here."
+}
