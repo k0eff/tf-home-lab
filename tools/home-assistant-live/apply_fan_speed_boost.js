@@ -119,7 +119,7 @@ function patchLiteralFanModes(config, prefix) {
 
 function buildLatchAction(prefix, setupPrefix) {
   const onTemplate = `${setupPrefix}{% set fan_boost_threshold = states('input_number.${prefix}_fan_boost_threshold') | float(1.0) %}\n{{ error is not none and (error | abs) >= fan_boost_threshold }}`;
-  const offTemplate = `${setupPrefix}{% set fan_boost_threshold = states('input_number.${prefix}_fan_boost_threshold') | float(1.0) %}\n{% set fan_boost_release_margin = states('input_number.${prefix}_fan_boost_release_margin') | float(0.5) %}\n{{ is_state('input_boolean.${prefix}_fan_boost_active', 'on') and error is not none and (error | abs) < (fan_boost_threshold - fan_boost_release_margin) }}`;
+  const offTemplate = `${setupPrefix}{% set fan_boost_threshold = states('input_number.${prefix}_fan_boost_threshold') | float(1.0) %}\n{% set fan_boost_release_margin = states('input_number.${prefix}_fan_boost_release_margin') | float(0.5) %}\n{% set fan_boost_effective_margin = [fan_boost_release_margin, fan_boost_threshold - 0.01] | min %}\n{{ is_state('input_boolean.${prefix}_fan_boost_active', 'on') and error is not none and (error | abs) < (fan_boost_threshold - fan_boost_effective_margin) }}`;
   return {
     alias: "Track fan-speed boost latch (error threshold trigger)",
     if: [{ condition: "template", value_template: onTemplate }],
