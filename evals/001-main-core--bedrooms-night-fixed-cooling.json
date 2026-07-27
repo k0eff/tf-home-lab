@@ -1,0 +1,32 @@
+{
+  "id": "001",
+  "branch": "main",
+  "name": "core--bedrooms-night-fixed-cooling",
+  "category": "core",
+  "description": "BedroomS comfort-band automation gains a toggle-gated night fixed-cooling mode: at summer_night_window start (19:30) with the new input_boolean.bedrooms_night_fixed_cooling on and the room not away, force continuous cool at a hardcoded 24C AC-setpoint instead of the normal on/off/fan_only/coil-cooldown cycling, reverting to normal cycling automatically once the toggle/window condition no longer holds.",
+  "implementation": {
+    "file": "app/stacks/home-assistant/main.tf",
+    "changes": [
+      "New time trigger summer_night_fixed_cooling_start at 19:30:00 on automation.test_aircon_bedrooms_room_sensor_comfort_band",
+      "New choose branch 'Summer: night fixed-cooling' — on trigger, if climate_mode is summer, toggle is on, and not away: climate.set_hvac_mode cool + climate.set_temperature 24 (hardcoded, not the raw bedrooms_summer_night_target, per AC-vs-room-sensor calibration offset)",
+      "Guard clause `and not (summer_night_window and is_state('input_boolean.bedrooms_night_fixed_cooling', 'on') and not away)` appended to the existing 'Summer: cool when room is above target comfort band', 'Summer: coil cool-down after target is reached', and 'Summer: turn off after coil cool-down' branches so old cycling logic is suppressed for the night",
+      "No guard needed on 'Night: sleep keeps climate off' — already inert Mar-Nov via the 2026-07-24 calendar guard",
+      "No import.tf change — helpers and the my-dash lovelace dashboard are live-only, never Terraform-managed",
+      "Live-first: applied via tools/home-assistant-live/apply_bedrooms_night_fixed_cooling.js (creates input_boolean.bedrooms_night_fixed_cooling, off by default), then backported into main.tf as a second, additive-only commit on top of a separate reconciliation commit that closed pre-existing main.tf/live drift from the 2026-07-24 incident fix"
+    ]
+  },
+  "validation": {
+    "type": "config_structure",
+    "checks": [
+      "git diff --stat on main.tf shows only additive changes scoped to the BedroomS resource block (lines 5182-5790): 37 insertions, 3 deletions (comma additions)",
+      "Brace/bracket balance in main.tf: +112 '{'/'}' and +24 '['/']', both balanced, matching the new JSON structures added",
+      "grep counts within the BedroomS block: 1x new choose-branch alias, 2x trigger id (definition + condition usage), 3x suppression guard clause (one per suppressed branch), 1x hardcoded temperature 24",
+      "Live: /api/template check on the 3 patched branch templates and the new branch's template returned HTTP 200 (valid Jinja, no syntax errors)",
+      "Live: automation.test_aircon_bedrooms_room_sensor_comfort_band state is 'on' after apply (POST-config side effect of disabling it was worked around with an explicit automation/turn_on call)",
+      "input_boolean.bedrooms_night_fixed_cooling created, off by default, added to the my-dash 'BedS Tune' view Night entities card",
+      "terraform validate not run — hashicorp/homeassistant provider not installed in this environment; structural checks above substitute",
+      "Not yet observed: a real 19:30 clock trigger end-to-end (state transition to cool at 24C on the actual automation firing) — only structural/template-syntax verification performed so far"
+    ]
+  },
+  "status": "pending"
+}
