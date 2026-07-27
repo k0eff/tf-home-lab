@@ -5399,7 +5399,7 @@ resource "homeassistant_automation" "test_aircon_bedrooms_room_sensor_comfort_ba
                 "entity_id" = "climate.v537_spalniam_2"
               }
               "data" = {
-                "temperature" = 24
+                "temperature" = "{{ states('input_number.bedrooms_night_fixed_cooling_target') | float(24) }}"
               }
             }
           ]
