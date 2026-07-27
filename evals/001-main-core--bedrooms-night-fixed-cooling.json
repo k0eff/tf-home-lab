@@ -13,7 +13,8 @@
       "No guard needed on 'Night: sleep keeps climate off' — already inert Mar-Nov via the 2026-07-24 calendar guard",
       "No import.tf change — helpers and the my-dash lovelace dashboard are live-only, never Terraform-managed",
       "Live-first: applied via tools/home-assistant-live/apply_bedrooms_night_fixed_cooling.js (creates input_boolean.bedrooms_night_fixed_cooling, off by default), then backported into main.tf as a second, additive-only commit on top of a separate reconciliation commit that closed pre-existing main.tf/live drift from the 2026-07-24 incident fix",
-      "Follow-up: the 24C setpoint was initially hardcoded with no UI control, inconsistent with every other comfort-band target in this automation. tools/home-assistant-live/apply_bedrooms_night_fixed_cooling_target_control.js added input_number.bedrooms_night_fixed_cooling_target (18-30 range, step 0.5, default 24) and rewired the action to a template reading it; also added to the Night card in my-dash, right after the toggle"
+      "Follow-up: the 24C setpoint was initially hardcoded with no UI control, inconsistent with every other comfort-band target in this automation. tools/home-assistant-live/apply_bedrooms_night_fixed_cooling_target_control.js added input_number.bedrooms_night_fixed_cooling_target (18-30 range, step 0.5, default 24) and rewired the action to a template reading it; also added to the Night card in my-dash, right after the toggle",
+      "Follow-up 2: the original design only fired at the fixed 19:30 trigger (edge-triggered, no self-heal) — toggling on after 19:30 had no effect until the next day, which surprised the user in live use. tools/home-assistant-live/apply_bedrooms_night_fixed_cooling_toggle_trigger.js added a state trigger on the toggle turning on (id night_fixed_cooling_toggle_on) and extended the branch condition to trigger.id in [both ids] plus an explicit summer_night_window check (previously only implied by the 19:30 trigger.id match)"
     ]
   },
   "validation": {
@@ -28,7 +29,8 @@
       "Live: climate.set_temperature action's data.temperature confirmed as the template string reading the input_number, not a literal, via /api/config/automation/config",
       "Live: my-dash 'BedS Tune' view's 'Night' card entities list confirmed via lovelace/config WS query to include both the toggle and the new target control, in order",
       "terraform validate not run — hashicorp/homeassistant provider not installed in this environment; structural checks above substitute",
-      "Not yet observed: a real 19:30 clock trigger end-to-end (state transition to cool at the configured target on the actual automation firing) — only structural/template-syntax verification performed so far"
+      "Live: user enabled the toggle mid-window (after 19:30) on 2026-07-27 and the AC did not turn on — root cause confirmed edge-triggered design, fixed via follow-up 2. AC manually forced to cool/24C for that night as a one-off catch-up; the toggle-trigger fix covers all future mid-window enables. Verified via /api/states: automation state 'on', condition template applied, toggle-trigger present in triggers array",
+      "Not yet observed: a real 19:30 clock trigger end-to-end, and not yet observed the new toggle-triggered path end-to-end (only structural + live-apply verification so far)"
     ]
   },
   "status": "pending"
