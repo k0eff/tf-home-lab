@@ -21,5 +21,6 @@
       "git check-ignore Gemfile.lock returns nothing (not ignored)"
     ]
   },
-  "status": "pending"
+  "status": "pass",
+  "branch": "main"
 }

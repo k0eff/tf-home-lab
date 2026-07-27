@@ -1,5 +1,5 @@
 {
-  "id": "001",
+  "id": "007",
   "branch": "main",
   "name": "core--bedrooms-night-fixed-cooling",
   "category": "core",
@@ -8,13 +8,13 @@
     "file": "app/stacks/home-assistant/main.tf",
     "changes": [
       "New time trigger summer_night_fixed_cooling_start at 19:30:00 on automation.test_aircon_bedrooms_room_sensor_comfort_band",
-      "New choose branch 'Summer: night fixed-cooling' — on trigger, if climate_mode is summer, toggle is on, and not away: climate.set_hvac_mode cool + climate.set_temperature reading input_number.bedrooms_night_fixed_cooling_target (default 24, per AC-vs-room-sensor calibration offset)",
+      "New choose branch 'Summer: night fixed-cooling' \u2014 on trigger, if climate_mode is summer, toggle is on, and not away: climate.set_hvac_mode cool + climate.set_temperature reading input_number.bedrooms_night_fixed_cooling_target (default 24, per AC-vs-room-sensor calibration offset)",
       "Guard clause `and not (summer_night_window and is_state('input_boolean.bedrooms_night_fixed_cooling', 'on') and not away)` appended to the existing 'Summer: cool when room is above target comfort band', 'Summer: coil cool-down after target is reached', and 'Summer: turn off after coil cool-down' branches so old cycling logic is suppressed for the night",
-      "No guard needed on 'Night: sleep keeps climate off' — already inert Mar-Nov via the 2026-07-24 calendar guard",
-      "No import.tf change — helpers and the my-dash lovelace dashboard are live-only, never Terraform-managed",
+      "No guard needed on 'Night: sleep keeps climate off' \u2014 already inert Mar-Nov via the 2026-07-24 calendar guard",
+      "No import.tf change \u2014 helpers and the my-dash lovelace dashboard are live-only, never Terraform-managed",
       "Live-first: applied via tools/home-assistant-live/apply_bedrooms_night_fixed_cooling.js (creates input_boolean.bedrooms_night_fixed_cooling, off by default), then backported into main.tf as a second, additive-only commit on top of a separate reconciliation commit that closed pre-existing main.tf/live drift from the 2026-07-24 incident fix",
       "Follow-up: the 24C setpoint was initially hardcoded with no UI control, inconsistent with every other comfort-band target in this automation. tools/home-assistant-live/apply_bedrooms_night_fixed_cooling_target_control.js added input_number.bedrooms_night_fixed_cooling_target (18-30 range, step 0.5, default 24) and rewired the action to a template reading it; also added to the Night card in my-dash, right after the toggle",
-      "Follow-up 2: the original design only fired at the fixed 19:30 trigger (edge-triggered, no self-heal) — toggling on after 19:30 had no effect until the next day, which surprised the user in live use. tools/home-assistant-live/apply_bedrooms_night_fixed_cooling_toggle_trigger.js added a state trigger on the toggle turning on (id night_fixed_cooling_toggle_on) and extended the branch condition to trigger.id in [both ids] plus an explicit summer_night_window check (previously only implied by the 19:30 trigger.id match)"
+      "Follow-up 2: the original design only fired at the fixed 19:30 trigger (edge-triggered, no self-heal) \u2014 toggling on after 19:30 had no effect until the next day, which surprised the user in live use. tools/home-assistant-live/apply_bedrooms_night_fixed_cooling_toggle_trigger.js added a state trigger on the toggle turning on (id night_fixed_cooling_toggle_on) and extended the branch condition to trigger.id in [both ids] plus an explicit summer_night_window check (previously only implied by the 19:30 trigger.id match)"
     ]
   },
   "validation": {
@@ -25,11 +25,11 @@
       "grep counts within the BedroomS block: 1x new choose-branch alias, 2x trigger id (definition + condition usage), 3x suppression guard clause (one per suppressed branch)",
       "Live: /api/template check on the 3 patched branch templates and the new branch's template returned HTTP 200 (valid Jinja, no syntax errors)",
       "Live: automation.test_aircon_bedrooms_room_sensor_comfort_band state is 'on' after each apply (POST-config side effect of disabling it was worked around with an explicit automation/turn_on call)",
-      "input_boolean.bedrooms_night_fixed_cooling created, off by default; input_number.bedrooms_night_fixed_cooling_target created, value 24.0 — both confirmed via /api/states",
+      "input_boolean.bedrooms_night_fixed_cooling created, off by default; input_number.bedrooms_night_fixed_cooling_target created, value 24.0 \u2014 both confirmed via /api/states",
       "Live: climate.set_temperature action's data.temperature confirmed as the template string reading the input_number, not a literal, via /api/config/automation/config",
       "Live: my-dash 'BedS Tune' view's 'Night' card entities list confirmed via lovelace/config WS query to include both the toggle and the new target control, in order",
-      "terraform validate not run — hashicorp/homeassistant provider not installed in this environment; structural checks above substitute",
-      "Live: user enabled the toggle mid-window (after 19:30) on 2026-07-27 and the AC did not turn on — root cause confirmed edge-triggered design, fixed via follow-up 2. AC manually forced to cool/24C for that night as a one-off catch-up; the toggle-trigger fix covers all future mid-window enables. Verified via /api/states: automation state 'on', condition template applied, toggle-trigger present in triggers array",
+      "terraform validate not run \u2014 hashicorp/homeassistant provider not installed in this environment; structural checks above substitute",
+      "Live: user enabled the toggle mid-window (after 19:30) on 2026-07-27 and the AC did not turn on \u2014 root cause confirmed edge-triggered design, fixed via follow-up 2. AC manually forced to cool/24C for that night as a one-off catch-up; the toggle-trigger fix covers all future mid-window enables. Verified via /api/states: automation state 'on', condition template applied, toggle-trigger present in triggers array",
       "Not yet observed: a real 19:30 clock trigger end-to-end, and not yet observed the new toggle-triggered path end-to-end (only structural + live-apply verification so far)"
     ]
   },

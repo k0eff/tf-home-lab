@@ -21,5 +21,6 @@
       "Source control status clean (no modified tracking of .md files in home-assistant-live)"
     ]
   },
-  "status": "pending"
+  "status": "pass",
+  "branch": "main"
 }
