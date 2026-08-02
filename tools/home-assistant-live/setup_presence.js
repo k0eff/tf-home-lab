@@ -78,6 +78,14 @@ const KRASIMIR_HOME_DOWN = `((not (${TAG_AWAY_ACTIVE})) and (${FOLD_WIFI_HOME} o
 const EMA_HOME_DOWN = `((not (${TAG_AWAY_ACTIVE})) and (${EMA_WIFI_HOME} or ${EMA_GPS_HOME} or is_state('input_boolean.presence_ema_yosifova', 'on')))`;
 const MOTION_PRESENT = "(is_state('binary_sensor.motion01', 'on') or is_state('binary_sensor.motion03', 'on') or is_state('binary_sensor.motion04spalniam', 'on'))";
 
+// Intentional duplicate of the occupancy check sync_climate_setup_templates.js hardcodes
+// per room (motion01 for LivingR's comfort-band automation, motion03 for BedroomB's — see
+// that file's `isLiving ? "motion01" : "motion03"` ternary). Kept as an independent copy
+// so this card shows exactly what the climate automations see, not the fused fold/ema
+// presence math above.
+const CLIMATE_MOTION_OCCUPIED = "(is_state('binary_sensor.motion01', 'on') or is_state('binary_sensor.motion03', 'on'))";
+const CLIMATE_LAST_MOTION_TS = "([as_timestamp(states.binary_sensor.motion01.last_changed, 0), as_timestamp(states.binary_sensor.motion03.last_changed, 0)] | max)";
+
 function helperId(entityId) {
   return entityId.replace(/^[^.]+\./, "");
 }
@@ -163,8 +171,9 @@ function detailedMetricsCard() {
     content: `<!-- presence-dashboard-card -->
 ## Presence diagnostics
 
-**Internet:** {% if is_state('input_boolean.internet_connection', 'on') %}🟢 online{% else %}🔴 offline / locked{% endif %}  
+**Internet:** {% if is_state('input_boolean.internet_connection', 'on') %}🟢 online{% else %}🔴 offline / locked{% endif %}
 **Someone home:** {% if is_state('input_boolean.someone_home', 'on') %}🟢 yes{% else %}🔴 no{% endif %}
+**Someone home (climate motion logic):** {% if ${CLIMATE_MOTION_OCCUPIED} %}🟢 yes{% else %}🔴 no{% endif %} · last motion {{ relative_time(as_datetime(${CLIMATE_LAST_MOTION_TS})) }} ago
 
 | Signal | Krasi | Ema |
 | --- | --- | --- |
