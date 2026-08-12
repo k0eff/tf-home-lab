@@ -1,0 +1,65 @@
+{
+  "id": "015",
+  "branch": "main",
+  "name": "ha--stratification-offset-normalization",
+  "category": "ha",
+  "description": "Follow-up to eval 014. The BedroomB sensor chain compares readings taken at different heights as if they were the same quantity. The primary Xiaomi sensor (5249) sits at occupied level; the secondary Xiaomi (faea) and the AC's own return-air sensor both read near the ceiling, where natural convection keeps the air warmer. Measured over 24h against the primary: ac_temp - primary mean 1.18C / p50 1.30C, secondary - primary mean 1.31C / p50 1.30C, both stable across hvac modes (cool 1.25/1.36, fan_only 1.02/1.42, off 1.27/1.08). Two consequences. (a) room_ac_conflict compares raw candidate against raw ac_temp, so with the disagreement threshold lowered to 1.0C in eval 014 the ordinary stratification gap of ~1.3C now trips the conflict flag permanently - it reports noise, not sensor disagreement. (b) When the chain falls through to secondary_room_sensor or climate_fallback, the ceiling-level reading is used directly as if it were the occupied-level temperature, so the whole comfort band is biased ~1.3C high and the room is systematically overcooled by the stratification gap - the same class of defect eval 014 fixed in the conflict resolver, still present in the fallback path. Fix: introduce a learned stratification offset per high-mounted source, expressed relative to the occupied-level primary, and normalise every source into that one reference frame before any comparison or fallback.",
+  "implementation": {
+    "files": [
+      "tools/home-assistant-live/apply_bedroomb_stratification_offset.js",
+      "tools/home-assistant-live/fix_bedroomb_secondary_offset_entity_id.js",
+      "tools/home-assistant-live/validate_bedroomb_stratification_offset.js",
+      "tools/home-assistant-live/backport_bedroomb_stratification_offset_terraform.js",
+      "app/stacks/home-assistant/main.tf"
+    ],
+    "changes": [
+      "Creates two input_number helpers via the websocket input_number/create path used by install_manual_override.js: bedroomb_ac_stratification_offset and bedroomb_ceiling_sensor_stratification_offset, both min -3 max 5 step 0.01 unit C, seeded from the measured 24h means (1.2 and 1.3) rather than from 0, so the correction is calibrated from its first run instead of converging from cold. Neither helper sets `initial`: none of this instance's 91 input_numbers do, and for a LEARNED value `initial` would discard the calibration on every HA restart. Step is 0.01 rather than 0.1 because a single EMA update at alpha 0.05 moves the offset by only a few hundredths, which a coarser step would round away to nothing.",
+      "Rewrites the 30 copies of the sensor-resolution chain so every source is normalised to the occupied-level reference frame: ac_temp_occupied = ac_temp - ac_offset, the secondary branch takes secondary_room - secondary_offset, the climate_fallback branch takes ac_temp_occupied, and room_ac_conflict compares candidate against ac_temp_occupied. dynamic_setpoint is deliberately left on RAW ac_temp, because the setpoint is consumed by the unit's own controller in the unit's own reference frame.",
+      "Adds one top-level action step ahead of the existing three that learns both offsets by EMA whenever the primary sensor is healthy: new = clamp(old * 0.95 + (high_reading - primary_room) * 0.05, -3, 5). The learning gate reuses the automation's own primary_healthy preamble verbatim, extracted from the live config rather than hand-rewritten, so 'healthy' cannot drift between the learner and the resolver. Learning stops automatically when the primary dies, freezing the offset at its last good value - which is exactly the value the fallback then needs.",
+      "Smoothing is 95/5 rather than the 70/30 used for learned_overshoot because this automation runs on a 5-minute time_pattern plus sensor-change triggers, so 95/5 gives a time constant of roughly 1.5-2h and tracks the typical gap instead of chasing the instantaneous one. A fast EMA would defeat the conflict detector by absorbing genuine disagreement into the offset.",
+      "Scope is BedroomB only, consistent with eval 014. LivingR (1770077000010) and BedroomS (1770077000061) are untouched and still carry the eval-014 defects as well as this one."
+    ]
+  },
+  "validation": {
+    "type": "functional_test",
+    "script": "tools/home-assistant-live/validate_bedroomb_stratification_offset.js",
+    "result": "42/42 checks passed",
+    "checks": [
+      "C1: pre-change live capture of primary, secondary, ac_temp, target, threshold and both measured gaps",
+      "C2: OLD conflict predicate renders True at the ordinary measured gap (candidate 24.7, ac_temp 26.0, threshold 1.0) - i.e. it was firing on stratification alone; NEW predicate renders False at the same readings once normalised",
+      "C3: NEW conflict predicate still renders True for a genuine disagreement well beyond the learned offset, so the detector is narrowed rather than disabled",
+      "C4: OLD climate_fallback yields the raw ceiling reading; NEW yields the occupied-level equivalent, and the difference equals the learned offset",
+      "C5: OLD secondary branch yields the raw ceiling reading; NEW yields the occupied-level equivalent",
+      "C6: dynamic_setpoint still derives from RAW ac_temp, unchanged by this slice",
+      "C7: both helpers exist with the expected min/max/step/unit and seeded values",
+      "C8: EMA update template is a contraction - repeated application from a seeded value converges toward the true gap and never leaves the clamp range",
+      "C9: structural counts in the live config - 30 normalised chains, 0 residual raw-ac_temp comparisons in the conflict line, 0 residual raw fallback assignments",
+      "C10: LivingR and BedroomS untouched (scope containment)",
+      "C11: automation state=on after reload, and the offsets actually move after a learning run",
+      "C12: main.tf mirrors the live config - 30 normalised chains, 0 raw-frame conflict comparisons, dynamic_setpoint still on raw ac_temp, the learning step present, no dangling helper reference",
+      "C12 addendum (measured separately, not a scripted check): terraform fmt drift on main.tf goes 4237 -> 4264 lines, the +27 being layout of the inserted block. Proved cosmetic by running terraform fmt on a copy and comparing string literals: all 4910 are byte-identical afterwards, so fmt would move whitespace only and never touches a Jinja template. The file was never fmt-clean, so it is left as written rather than reformatted in an unrelated 924/875-line churn."
+    ]
+  },
+  "status": "pass",
+  "incidents": [
+    {
+      "what": "apply_bedroomb_stratification_offset.js asked HA to create input_number.bedroomb_secondary_stratification_offset, but HA created input_number.bedroomb_ceiling_sensor_stratification_offset. The 30 templates plus the learning step - 32 references - therefore pointed at an entity that did not exist. Nothing errored: the templates' `| float(1.3)` default absorbed the miss, so the ceiling offset silently froze at a hardcoded 1.3 and never learned, while the real helper sat unused at its min of -3.",
+      "detected_by": "Post-apply state read: the created helper was at -3 and never moved after a trigger, while the AC helper did move.",
+      "fix": "fix_bedroomb_secondary_offset_entity_id.js repointed all 32 references at the id HA actually assigned (asserting the right helper exists, the wrong one does not, the count is exactly 32, and the byte delta equals 32 * the id length difference), then seeded it off its min. apply_...js now asserts up front that the friendly name derives the entity id the templates reference, so the class of bug cannot recur silently.",
+      "root_cause": "HA's websocket input_number/create ignores any requested entity id and derives it from the FRIENDLY NAME. The companion AC helper escaped only by the coincidence that its name derives the id it was asked for. The `| float(default)` idiom used everywhere in this repo makes a missing entity indistinguishable from a present one at runtime."
+    },
+    {
+      "what": "The backport script asserted that LivingR and BedroomS would retain 60 byte-identical raw sensor chains between them. The real count is 0.",
+      "detected_by": "The script's own pre-write assertion, which refused to write main.tf and exited non-zero.",
+      "fix": "Replaced the count-based guard with an exact byte-identity check on everything outside the BedroomB resource block: the text before the block's opening brace and after its closing brace must be unchanged. Stronger than the count it replaced, and it does not depend on how the siblings happen to be worded.",
+      "root_cause": "Expected count extrapolated from BedroomB's 30 chains instead of read from the file. All 30 `{% set candidate = ac_temp %}` occurrences in main.tf are BedroomB's - the siblings word their chains differently and LivingR drives a single room sensor."
+    },
+    {
+      "what": "`terraform fmt -diff` was run to inspect formatting and rewrote main.tf in place, reformatting the whole file: 924 insertions / 875 deletions of unrelated pre-existing drift on top of the intended change.",
+      "detected_by": "git diff --stat immediately afterwards, which showed a diff far larger than the backport had reported writing.",
+      "fix": "Restored main.tf from the pre-backport backup and re-ran the backport, which reproduced the identical structural delta. Only `terraform fmt -check -diff` is used from then on.",
+      "root_cause": "`-diff` prints a diff but does not imply a dry run; `-check` is the flag that makes fmt read-only."
+    }
+  ],
+  "notes": "Raised by the user against the eval-014 writeup: the Xiaomi sensor is low and the AC sensor is high, natural convection guarantees a difference between them, so falling back to the AC reading requires adding or subtracting that difference first - 'to measure apples with apples'. Eval 014 fixed the conflict RESOLVER by trusting the healthy room sensor, which sidestepped the problem while a healthy room sensor existed but left both the conflict DETECTOR and the fallback PATH comparing across reference frames. This eval closes that: the offset is learned rather than configured, so it needs no assumption about where each sensor is mounted - if two sensors turn out to be co-located the offset converges to ~0 and nothing changes, and if one is at the ceiling it converges to the real gap. The measured secondary-primary gap of 1.31C is itself the evidence that faea is high-mounted; eval 014 inferred this from a single reading, this eval measures it over 24h. Delivered state: both offsets learning live (AC 1.2 -> 1.30, ceiling 1.30 -> 1.38 across the validation runs), each tracking toward its live gap (1.5 and 2.1 at the time of the last run) with the automation on. The conflict detector is now quiet on ordinary stratification and still fires on a genuine 1.5C sensor disagreement in either direction."
+}
