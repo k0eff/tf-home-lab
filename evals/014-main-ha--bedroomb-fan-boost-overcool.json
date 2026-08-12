@@ -1,0 +1,59 @@
+{
+  "id": "014",
+  "branch": "main",
+  "name": "ha--bedroomb-fan-boost-overcool",
+  "category": "ha",
+  "description": "BedroomB (climate.v357_spalniag_2) blew at fan speed 5 in fan_only while the occupied-level room sensor sat below target, reported by the user first as 'temperature dropped under 23.6, it is freezing and it runs at max' and later as 'it is blowing hard when there is no need'. Three independent defects compounded: (1) the eval-006 fan-boost latch keys off (error | abs), so a NEGATIVE error - room colder than target - latches and holds the boost exactly as if the room were too hot; (2) the room/AC disagreement resolver picks conflict_worst_case = max(room, ac_temp) in summer, controlling the room to the AC's ceiling-level return-air reading instead of the healthy occupied-level sensor; (3) the coil-cooldown shutdown branch gates on fan_mode == cooling_fan_mode, which becomes unreachable once the fan has been left at boost speed 5, so the unit idles at max in fan_only forever. Fixed by making boost direction season-aware, making the resolver trust a healthy room sensor while keeping the disagreement visible as a source label, removing the unreachable fan-equality gate, and lowering the disagreement threshold 1.5 -> 1.0C as requested - which is only safe once (2) is fixed.",
+  "implementation": {
+    "files": [
+      "tools/home-assistant-live/fix_bedroomb_fan_boost_overcool.js",
+      "tools/home-assistant-live/fix_bedroomb_cooldown_shutdown_deadlock.js",
+      "tools/home-assistant-live/validate_bedroomb_fan_boost_overcool.js",
+      "tools/home-assistant-live/backport_bedroomb_fan_boost_overcool_terraform.js",
+      "app/stacks/home-assistant/main.tf"
+    ],
+    "changes": [
+      "fix_bedroomb_fan_boost_overcool.js: patches automation 1770077000021 live via /api/config/automation/config/{id}, walking every string leaf so condition templates, action data templates and the logbook message are patched uniformly. (a) Replaces the 2 absolute-value fan-boost predicates with a season-aware boost_error = error if summer else (0 - error), so the boost latches only on the uncomfortable side of target in either season. The release leg also releases when boost_error is none, so the latch cannot strand. (b) Replaces all 30 occurrences of the conflict_worst_case block with conflict_trust_room_sensor, keeping effective = candidate while preserving a distinct source label so disagreement stays visible in the logbook. (c) Sets input_number.bedroomb_room_ac_disagreement_threshold to 1.0. Refuses to write unless every replacement matched and zero old patterns remain.",
+      "fix_bedroomb_cooldown_shutdown_deadlock.js: removes the fan-equality clause from the 'Summer: turn off after coil cool-down' condition. Asserts exactly 1 occurrence and that the byte delta equals the clause length, so the patch cannot be anything but surgical. Behavioural change worth stating: daytime no-motion circulation in fan_only now ends after coil_cooldown_minutes instead of continuing indefinitely; the night air-cleaning feature is unaffected, still guarded by night_air_clean_window.",
+      "backport_bedroomb_fan_boost_overcool_terraform.js: mirrors all four edits into main.tf, re-expressing the newline-bearing patterns with literal 2-char backslash-n because main.tf stores each Jinja template as one physical HCL line. Brace-matches the BedroomB resource block first, because the fan-boost ON predicate is byte-identical across all three rooms and a whole-file replace would silently patch LivingR and BedroomS too. Asserts match counts, zero residual old patterns inside the block, that the siblings retain their 4 abs() predicates, and that the structural delta equals a value derived per replacement in advance ({ +2, [ -60, ( -60) rather than observed after the fact.",
+      "Scope is BedroomB only. LivingR (1770077000010) and BedroomS (1770077000061) carry defects (1) and (2) identically and are deliberately left for a separate slice, per the vertical-slice workflow default."
+    ]
+  },
+  "validation": {
+    "type": "functional_test",
+    "script": "tools/home-assistant-live/validate_bedroomb_fan_boost_overcool.js",
+    "result": "23/23 checks passed",
+    "checks": [
+      "C1 (pre-fix live capture, incident state): primary room sensor 23.7C against target 24.4C -> error -0.7C, fan_boost_active=on, fan_mode=5, hvac fan_only, disagreement_threshold 1.5. Proves the latch was being held open by an overcooled room, not a hot one. Captured before any write.",
+      "C2a/C2b/C2c: OLD ON renders True at error=-1.5 summer (the defect - overcooled room latches boost); NEW ON renders False there, and still True at error=+1.5 summer so genuine overshoot still boosts",
+      "C3: NEW ON still True at error=-1.5 winter - eval 006's intended winter-undershoot symmetry is preserved, not lost",
+      "C4a/C4b: OLD ON rendered True at error=+1.5 winter (overheated room boosting - the winter mirror of the same defect); NEW ON renders False",
+      "C5a/C5b/C5c: at the exact incident value error=-0.7 summer, OLD RELEASE renders False (the stuck latch the user hit) and NEW RELEASE renders True; NEW RELEASE still False at error=+0.7 so the 0.5-1.0C hysteresis band is intact, not collapsed",
+      "C7/C7b/C8/C8b: at the incident's real readings (room 23.7, ac_temp 25.5), OLD resolver yields effective=25.5 and error=+1.1 - it would have commanded cooling into an already-cold room - while NEW resolver yields 23.7 and error=-0.7. This is also the counter-proof that lowering the threshold to 1.0 alone, without fixing the resolver, would have made the reported symptom strictly worse rather than better.",
+      "C9a-C9d: live BedroomB config has 0 '(error | abs)', 0 'conflict_worst_case', 2 season-aware boost_error definitions, 30 conflict_trust_room_sensor labels",
+      "C9e/C9f (both siblings): LivingR and BedroomS still carry both defects, confirming scope containment rather than an accidental global patch",
+      "C10: fan-equality deadlock clause absent from the live config",
+      "C11: comfort-band automation state=on after /api/services/automation/reload",
+      "C12 (deadlock, measured live rather than argued): every clause of the turn-off branch evaluated individually at incident time - not night_air_clean_window True, state==fan_only True, elapsed 13.4min >= 11min True, fan-equality False (fan 5 vs cooling_fan_mode 2). The two branches that could change the fan both refused: 'Daytime no motion' is guarded by fan_mode not in ['2','5'] so it will not re-touch a fan it already raised to 5, and 'Daytime motion' requires motion which was off. Fan 5 was therefore a terminal value and the shutdown was unreachable, not merely delayed.",
+      "C13 (post-fix live behaviour, real state): applying the deadlock fix moved the unit fan_only -> off immediately. Later, once the room drifted up to 24.7C (above target 24.4 + 0.3 start delta), the automation resumed cooling on its own at hvac=cool with fan_mode=2 - the configured cooling speed, not the boost speed - with boost_latch still off. Full cycle verified end to end on live state, not synthetic input.",
+      "C14: terraform fmt -check -diff produces exactly 4237 diff lines both before and after the main.tf patch (delta 0), so no new formatting drift was introduced; that 4237 is the file's large pre-existing drift documented in eval 006",
+      "C15: main.tf mirror verified semantically - the live config's post-fix ON and RELEASE predicates were re-encoded to HCL form and found present in main.tf, and the BedroomB block counts match the live config exactly (2 boost_error, 30 trust labels, 0 of each old pattern)"
+    ]
+  },
+  "status": "pass",
+  "incidents": [
+    {
+      "what": "The backport script's first run asserted that LivingR and BedroomS would retain 2 abs() predicates between them; the real count is 4, since each room has both an ON and a RELEASE leg.",
+      "detected_by": "The script's own pre-write assertion, which refused to write main.tf and exited non-zero.",
+      "fix": "Corrected the expected count to 4 and added a positive assertion that the siblings still carry conflict_worst_case. No bad write occurred - the guard did its job.",
+      "root_cause": "Expected-count written from memory of the defect shape (one predicate) rather than from the code (two legs per room)."
+    },
+    {
+      "what": "validate_bedroomb_fan_boost_overcool.js initially targeted BedroomS at automation id 1770077000031, which does not exist; 2 of 23 checks failed.",
+      "detected_by": "The validation run itself - the two scope-containment checks for BedroomS returned false.",
+      "fix": "Looked up the real ids from /api/states attributes (BedroomS is 1770077000061) and corrected the constant. Re-ran: 23/23.",
+      "root_cause": "Sibling automation id guessed by pattern-extrapolating from LivingR 1770077000010 and BedroomB 1770077000021 instead of being read from HA."
+    }
+  ],
+  "notes": "Defect (1) traces to eval 006, which chose absolute value deliberately and documented the intent as 'Symmetric for summer overshoot and winter undershoot'. The symmetry intent was correct; absolute value is the wrong encoding of it, because it is season-blind and therefore also fires on each season's comfortable side. Eval 006's own C3 check asserted the buggy behaviour as correct ('True at error=-1.5, |error|>=threshold') without asking which season -1.5 was meant to be an undershoot in. Defect (2) is not a sensor fault: the secondary CEILING sensor (faea, 25.6-25.7C) agrees closely with the AC return-air reading (25.0-25.5C) while the occupied-level primary (5249) reads ~23.7-24.3C, so the 'conflict' the resolver reacted to is ordinary thermal stratification, and worst-case resolution therefore controls the room to its ceiling temperature by design, every time. The user had independently verified against a real thermometer that the room sensors read correctly, which is what ruled out the sensor-fault reading of the symptom. Defect (3) is reachable independently of (1) via the away-circulation branch, so it was fixed on its own terms rather than treated as a downstream symptom. Two earlier hypotheses were investigated and disproved before landing here: a stuck manual-override (input_boolean.bedroomb_manual_override was off and its until-timestamp long expired) and dead room sensors (the *_temperature_humidity_sensor entities are indeed dead platform-wide since 2026-07-22, but they are the superseded pre-Stage-5 entity ids - the live *_temperature entities that the automation actually reads were healthy at 100% battery)."
+}
