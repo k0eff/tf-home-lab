@@ -82,6 +82,16 @@ function hclString(text) {
   if (text.includes("${") || text.includes("%{")) {
     throw new Error("text contains an HCL interpolation opener and needs $${ / %%{ escaping");
   }
+  // eval 016: this function takes RAW text and produces an HCL literal. If the
+  // caller hands it text that is already HCL-escaped - which anything lifted out
+  // of main.tf is, since main.tf stores each template as one physical line with
+  // 2-character \n sequences - then JSON.stringify escapes the backslash again
+  // and the literal lands as \\n, which terraform parses as backslash + n rather
+  // than a newline. That is silent: counts, greps and presence checks all still
+  // pass over the corrupted template. Unescape before calling, not after.
+  if (/\\n/.test(text)) {
+    throw new Error("text still contains a 2-character \\n sequence - it is HCL-escaped already; unescape it to real newlines before calling hclString");
+  }
   return JSON.stringify(text);
 }
 

@@ -1,0 +1,44 @@
+{
+  "id": "016",
+  "branch": "main",
+  "name": "ha--learning-step-newline-double-escape",
+  "category": "ha",
+  "description": "The eval-015 backport wrote the stratification learning step into main.tf with DOUBLE-escaped newlines. main.tf stores each Jinja template as one physical HCL line in which a newline is the 2-character sequence backslash-n. The backport lifted the primary_healthy preamble out of that already-escaped HCL text, so the text held in memory contained a literal backslash followed by n; it then passed that text through hclString(), which is JSON.stringify, and JSON.stringify escapes a literal backslash to two backslashes. The five learning-step templates therefore landed in main.tf as backslash-backslash-n, which terraform parses as a literal backslash followed by n rather than as a newline. Live HA is unaffected and correct - the apply script posted real JSON with real newlines, and the 42/42 eval-015 validation ran against live - but main.tf no longer mirrors it: a terraform apply would push the whole 85-line preamble to HA as a single line carrying literal backslash-n text, which Jinja cannot parse, so the learning step would error and both stratification offsets would stop learning and freeze at their last values. The comfort band itself is unaffected: the 30 sensor-resolution chains were produced by string replacement inside already-escaped text and never went through hclString(), so they are correct in main.tf. eval-015 check C12d only asserted that the learning-step alias was PRESENT in main.tf, never that its templates matched live, which is why 42/42 passed over a broken backport.",
+  "implementation": {
+    "files": [
+      "tools/home-assistant-live/fix_main_tf_learning_step_newline_escape.js",
+      "tools/home-assistant-live/backport_bedroomb_stratification_offset_terraform.js",
+      "app/stacks/home-assistant/main.tf"
+    ],
+    "changes": [
+      "fix_main_tf_learning_step_newline_escape.js: replaces the double-escaped sequence with the single-escaped one inside the learning-step span only. The span is bounded by the learning-step alias and the next alias key after it. Refuses to write unless every occurrence it is about to touch lies inside that span, unless the file's one legitimate double-escape elsewhere (a Jinja join over a literal newline in the Lossnay battery-report automation) is left untouched, and unless every byte outside the span is unchanged.",
+      "The proof of correctness is not a count: after patching, the five learning-step templates extracted from main.tf must be BYTE-IDENTICAL to the five running live, read back over the REST API. That is the assertion the original backport was missing.",
+      "backport_bedroomb_stratification_offset_terraform.js: hclString() now refuses any text that still contains a 2-character backslash-n sequence, since that means the caller handed it HCL-escaped text where raw text was expected. This is the guard that would have caught the defect at write time."
+    ]
+  },
+  "validation": {
+    "type": "functional_test",
+    "script": "tools/home-assistant-live/fix_main_tf_learning_step_newline_escape.js",
+    "result": "fix applied and verified: 5/5 learning-step templates in main.tf now byte-identical to live; 431 double-escapes repaired, the 1 legitimate one elsewhere untouched; structural markers unchanged; terraform still parses; eval-015 validation re-run 42/42",
+    "checks": [
+      "C1: before the fix, the five live learning-step templates are absent from main.tf, and the nearest main.tf strings are each longer by exactly the preamble's newline count",
+      "C2: every double-escaped occurrence to be replaced lies inside the learning-step span; zero before it",
+      "C3: the one legitimate double-escape elsewhere in the file is still present afterwards",
+      "C4: after the fix, all five live learning-step templates are present in main.tf byte-for-byte",
+      "C5: everything outside the learning-step span is byte-identical to before",
+      "C6: the eval-015 and eval-014 structural counts in main.tf are unchanged by this fix",
+      "C7: terraform fmt parses the result",
+      "C8: the eval-015 validation still passes end to end"
+    ]
+  },
+  "status": "pass",
+  "incidents": [
+    {
+      "what": "eval-015 check C12d asserted only that the learning-step ALIAS was present in main.tf. It passed over a backport whose five templates were corrupted, so 42/42 was reported on a main.tf that could not have worked.",
+      "detected_by": "A live-vs-main.tf drift comparison run while investigating an unrelated user report that the rooms were too warm.",
+      "fix": "The repair script asserts byte-identity of all five templates against the live config, before and after. hclString() in the backport script now refuses text that still carries a 2-character backslash-n sequence, which is what silently produced the corruption.",
+      "root_cause": "Presence checks cannot detect corruption of the thing they check for. The template was reachable by substring search the whole time; only its escaping was wrong, and no count-based assertion can see that. Byte-identity against live was available over the API for free and was not used."
+    }
+  ],
+  "notes": "Found while answering a user report that the rooms had become too warm. The warmth turned out to be unrelated - it is the expected consequence of eval-014 moving the control reference frame from max(room, ceiling) down to the occupied-level sensor without the targets being re-tuned - but the drift check the user asked for ('does what we did match the code') surfaced this. General lesson for this repo: a backport check that asserts a marker is PRESENT proves almost nothing, because presence survives arbitrary corruption of the surrounding template. The check that has teeth is byte-identity against the live config, which is available over the API at no cost."
+}
