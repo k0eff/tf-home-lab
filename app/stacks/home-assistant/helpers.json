@@ -1,0 +1,1169 @@
+{
+  "generated_by": "tools/home-assistant-live/helpers_sync.js --export",
+  "helper_count": 150,
+  "helpers": {
+    "input_boolean.bedroomb_allow_away_saving": {
+      "name": "BedroomB Allow Away Saving",
+      "icon": "mdi:home-export-outline",
+      "value": "on"
+    },
+    "input_boolean.bedroomb_fan_boost_active": {
+      "name": "BedroomB Fan Boost Active",
+      "icon": "mdi:fan-alert",
+      "value": "off"
+    },
+    "input_boolean.bedroomb_manual_override": {
+      "name": "BedroomB Manual Override",
+      "icon": "mdi:hand-back-right",
+      "value": "off"
+    },
+    "input_boolean.bedroomb_program_requested": {
+      "name": "BedroomB Program Requested",
+      "icon": "mdi:timer-sand",
+      "value": "on"
+    },
+    "input_boolean.bedroomb_was_away": {
+      "name": "BedroomB Was Away",
+      "icon": "mdi:home-export-outline",
+      "value": "off"
+    },
+    "input_boolean.bedrooms_allow_away_saving": {
+      "name": "BedroomS Allow Away Saving",
+      "icon": "mdi:home-export-outline",
+      "value": "on"
+    },
+    "input_boolean.bedrooms_allow_night_cooling": {
+      "name": "BedroomS Allow Night Cooling",
+      "icon": "mdi:weather-night",
+      "value": "on"
+    },
+    "input_boolean.bedrooms_fan_boost_active": {
+      "name": "BedroomS Fan Boost Active",
+      "icon": "mdi:fan-alert",
+      "value": "on"
+    },
+    "input_boolean.bedrooms_manual_override": {
+      "name": "BedroomS Manual Override",
+      "icon": "mdi:hand-back-right",
+      "value": "off"
+    },
+    "input_boolean.bedrooms_night_fixed_cooling": {
+      "name": "BedroomS Night Fixed Cooling",
+      "icon": "mdi:snowflake-check",
+      "value": "on"
+    },
+    "input_boolean.bedrooms_program_requested": {
+      "name": "BedroomS Program Requested",
+      "icon": "mdi:timer-sand",
+      "value": "on"
+    },
+    "input_boolean.bedrooms_was_away": {
+      "name": "BedroomS Was Away",
+      "icon": "mdi:home-export-outline",
+      "value": "off"
+    },
+    "input_boolean.internet_connection": {
+      "name": "Internet Connection",
+      "icon": "mdi:web",
+      "value": "on"
+    },
+    "input_boolean.livingr_allow_away_saving": {
+      "name": "LivingR Allow Away Saving",
+      "icon": "mdi:home-export-outline",
+      "value": "on"
+    },
+    "input_boolean.livingr_allow_night_cooling": {
+      "name": "LivingR Allow Night Cooling",
+      "icon": "mdi:weather-night",
+      "value": "off"
+    },
+    "input_boolean.livingr_fan_boost_active": {
+      "name": "LivingR Fan Boost Active",
+      "icon": "mdi:fan-alert",
+      "value": "off"
+    },
+    "input_boolean.livingr_manual_override": {
+      "name": "LivingR Manual Override",
+      "icon": "mdi:hand-back-right",
+      "value": "off"
+    },
+    "input_boolean.livingr_program_requested": {
+      "name": "LivingR Program Requested",
+      "icon": "mdi:timer-sand",
+      "value": "on"
+    },
+    "input_boolean.livingr_was_away": {
+      "name": "LivingR Was Away",
+      "icon": "mdi:home-export-outline",
+      "value": "off"
+    },
+    "input_boolean.lossnay_fan_boost_active": {
+      "name": "Lossnay Fan Boost Active",
+      "icon": "mdi:fan-alert",
+      "value": "off"
+    },
+    "input_boolean.presence_ema_yosifova": {
+      "name": "Presence Ema Yosifova",
+      "icon": "mdi:account",
+      "value": "off"
+    },
+    "input_boolean.presence_krasimir_koev": {
+      "name": "Presence Krasimir Koev",
+      "icon": "mdi:account",
+      "value": "on"
+    },
+    "input_boolean.someone_home": {
+      "name": "Someone Home",
+      "icon": "mdi:home-account",
+      "value": "on"
+    },
+    "input_datetime.bedroomb_air_clean_end": {
+      "name": "BedroomB Air Clean End",
+      "has_date": false,
+      "has_time": true,
+      "value": "06:00:00"
+    },
+    "input_datetime.bedroomb_air_clean_start": {
+      "name": "BedroomB Air Clean Start",
+      "has_date": false,
+      "has_time": true,
+      "value": "03:00:00"
+    },
+    "input_datetime.bedroomb_away_ended_at": {
+      "name": "BedroomB Away Ended At",
+      "icon": "mdi:clock-check-outline",
+      "has_date": true,
+      "has_time": true,
+      "value": "2026-08-13 15:22:55"
+    },
+    "input_datetime.bedroomb_day_start": {
+      "name": "BedroomB Day Start",
+      "has_date": false,
+      "has_time": true,
+      "value": "08:30:00"
+    },
+    "input_datetime.bedroomb_manual_override_until": {
+      "name": "BedroomB Manual Override Until",
+      "icon": "mdi:timer-sand",
+      "has_date": true,
+      "has_time": true,
+      "value": "2026-06-15 13:45:01"
+    },
+    "input_datetime.bedroomb_night_start": {
+      "name": "BedroomB Night Start",
+      "has_date": false,
+      "has_time": true,
+      "value": "00:30:00"
+    },
+    "input_datetime.bedroomb_room_primary_last_moved": {
+      "name": "bedroomb_room_primary last moved",
+      "has_date": true,
+      "has_time": true,
+      "value": "2026-08-13 19:53:36"
+    },
+    "input_datetime.bedroomb_room_secondary_last_moved": {
+      "name": "bedroomb_room_secondary last moved",
+      "has_date": true,
+      "has_time": true,
+      "value": "2026-08-13 19:33:43"
+    },
+    "input_datetime.bedrooms_air_clean_end": {
+      "name": "BedroomS Air Clean End",
+      "has_date": false,
+      "has_time": true,
+      "value": "06:00:00"
+    },
+    "input_datetime.bedrooms_air_clean_start": {
+      "name": "BedroomS Air Clean Start",
+      "has_date": false,
+      "has_time": true,
+      "value": "03:00:00"
+    },
+    "input_datetime.bedrooms_away_ended_at": {
+      "name": "BedroomS Away Ended At",
+      "icon": "mdi:clock-check-outline",
+      "has_date": true,
+      "has_time": true,
+      "value": "2026-08-13 15:25:00"
+    },
+    "input_datetime.bedrooms_day_start": {
+      "name": "BedroomS Day Start",
+      "has_date": false,
+      "has_time": true,
+      "value": "09:00:00"
+    },
+    "input_datetime.bedrooms_manual_override_until": {
+      "name": "BedroomS Manual Override Until",
+      "has_date": true,
+      "has_time": true,
+      "value": "2026-07-15 00:00:00"
+    },
+    "input_datetime.bedrooms_night_start": {
+      "name": "BedroomS Night Start",
+      "has_date": false,
+      "has_time": true,
+      "value": "19:30:00"
+    },
+    "input_datetime.bedrooms_room_last_moved": {
+      "name": "bedrooms_room last moved",
+      "has_date": true,
+      "has_time": true,
+      "value": "2026-08-13 19:53:09"
+    },
+    "input_datetime.livingr_air_clean_end": {
+      "name": "LivingR Air Clean End",
+      "has_date": false,
+      "has_time": true,
+      "value": "06:00:00"
+    },
+    "input_datetime.livingr_air_clean_start": {
+      "name": "LivingR Air Clean Start",
+      "has_date": false,
+      "has_time": true,
+      "value": "03:00:00"
+    },
+    "input_datetime.livingr_away_ended_at": {
+      "name": "LivingR Away Ended At",
+      "icon": "mdi:clock-check-outline",
+      "has_date": true,
+      "has_time": true,
+      "value": "2026-08-13 15:22:57"
+    },
+    "input_datetime.livingr_day_start": {
+      "name": "LivingR Day Start",
+      "has_date": false,
+      "has_time": true,
+      "value": "08:30:00"
+    },
+    "input_datetime.livingr_manual_override_until": {
+      "name": "LivingR Manual Override Until",
+      "icon": "mdi:timer-sand",
+      "has_date": true,
+      "has_time": true,
+      "value": "2026-06-14 19:09:28"
+    },
+    "input_datetime.livingr_night_start": {
+      "name": "LivingR Night Start",
+      "has_date": false,
+      "has_time": true,
+      "value": "00:30:00"
+    },
+    "input_datetime.livingr_room_last_moved": {
+      "name": "livingr_room last moved",
+      "has_date": true,
+      "has_time": true,
+      "value": "2026-08-13 19:42:25"
+    },
+    "input_datetime.lossnay_fan_boost_until": {
+      "name": "Lossnay Fan Boost Until",
+      "icon": "mdi:timer-sand",
+      "has_date": true,
+      "has_time": true,
+      "value": "2026-08-09 23:51:25"
+    },
+    "input_datetime.presence_away_tag_until": {
+      "name": "Presence Away Tag Until",
+      "icon": "mdi:tag-off",
+      "has_date": true,
+      "has_time": true,
+      "value": "2026-07-26 14:26:09"
+    },
+    "input_datetime.xiaomi_miot_self_heal_last_attempt": {
+      "name": "Xiaomi MIoT Self-Heal Last Attempt",
+      "has_date": true,
+      "has_time": true,
+      "value": "2026-07-24 19:30:00"
+    },
+    "input_number.bedroomb_ac_stratification_offset": {
+      "name": "BedroomB AC Stratification Offset",
+      "icon": "mdi:arrow-expand-vertical",
+      "min": -3,
+      "max": 5,
+      "step": 0.01,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "1.47"
+    },
+    "input_number.bedroomb_away_relax_delta": {
+      "name": "BedroomB Away Relax Delta",
+      "min": 0,
+      "max": 6,
+      "step": 0.5,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "3.0"
+    },
+    "input_number.bedroomb_ceiling_sensor_stratification_offset": {
+      "name": "BedroomB Ceiling Sensor Stratification Offset",
+      "icon": "mdi:arrow-expand-vertical",
+      "min": -3,
+      "max": 5,
+      "step": 0.01,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "1.77"
+    },
+    "input_number.bedroomb_coil_cooldown_minutes": {
+      "name": "BedroomB Coil Cooldown Minutes",
+      "min": 1,
+      "max": 30,
+      "step": 1,
+      "mode": "box",
+      "value": "11.0"
+    },
+    "input_number.bedroomb_cooling_fan_mode": {
+      "name": "BedroomB Cooling Fan Mode",
+      "min": 1,
+      "max": 5,
+      "step": 1,
+      "mode": "slider",
+      "value": "2.0"
+    },
+    "input_number.bedroomb_cooling_overshoot": {
+      "name": "BedroomB Cooling Overshoot",
+      "min": 0,
+      "max": 1,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "0.1"
+    },
+    "input_number.bedroomb_cooling_start_delta": {
+      "name": "BedroomB Day Cooling Start Delta",
+      "min": 0.1,
+      "max": 2,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "0.3"
+    },
+    "input_number.bedroomb_cooling_stop_room_temp": {
+      "name": "BedroomB Cooling Stop Room Temp",
+      "min": 0,
+      "max": 35,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "24.5"
+    },
+    "input_number.bedroomb_fan_boost_release_margin": {
+      "name": "BedroomB Fan Boost Release Margin",
+      "min": 0.1,
+      "max": 1.5,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "0.5"
+    },
+    "input_number.bedroomb_fan_boost_threshold": {
+      "name": "BedroomB Fan Boost Threshold",
+      "min": 0.5,
+      "max": 3,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "1.0"
+    },
+    "input_number.bedroomb_hot_summer_target": {
+      "name": "BedroomB Hot Summer Day Target",
+      "min": 18,
+      "max": 30,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "24.4"
+    },
+    "input_number.bedroomb_manual_target_temperature": {
+      "name": "BedroomB Manual Target Temperature",
+      "min": 16,
+      "max": 31,
+      "step": 0.5,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "24.5"
+    },
+    "input_number.bedroomb_mild_outside_threshold": {
+      "name": "BedroomB Mild Outside Threshold",
+      "min": 20,
+      "max": 35,
+      "step": 0.5,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "28.0"
+    },
+    "input_number.bedroomb_night_cooling_start_delta": {
+      "name": "BedroomB Night Cooling Start Delta",
+      "min": 0.1,
+      "max": 2,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "0.4"
+    },
+    "input_number.bedroomb_night_summer_target": {
+      "name": "BedroomB Summer Night Target",
+      "min": 18,
+      "max": 30,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "28.0"
+    },
+    "input_number.bedroomb_night_winter_start_delta": {
+      "name": "BedroomB Night Winter Start Delta",
+      "min": 0.1,
+      "max": 3,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "0.5"
+    },
+    "input_number.bedroomb_night_winter_target": {
+      "name": "BedroomB Winter Night Target",
+      "min": 16,
+      "max": 26,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "19.0"
+    },
+    "input_number.bedroomb_outside_sensor_min_battery": {
+      "name": "BedroomB Outside Sensor Min Battery",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "mode": "box",
+      "unit_of_measurement": "%",
+      "value": "10.0"
+    },
+    "input_number.bedroomb_override_duration": {
+      "name": "BedroomB Override Duration",
+      "min": 5,
+      "max": 480,
+      "step": 5,
+      "mode": "box",
+      "unit_of_measurement": "min",
+      "value": "35.0"
+    },
+    "input_number.bedroomb_return_boost_fan_mode": {
+      "name": "BedroomB Return Boost Fan Mode",
+      "min": 1,
+      "max": 5,
+      "step": 1,
+      "mode": "box",
+      "value": "5.0"
+    },
+    "input_number.bedroomb_return_boost_minutes": {
+      "name": "BedroomB Return Boost Minutes",
+      "min": 0,
+      "max": 60,
+      "step": 5,
+      "mode": "box",
+      "unit_of_measurement": "min",
+      "value": "20.0"
+    },
+    "input_number.bedroomb_room_ac_disagreement_threshold": {
+      "name": "BedroomB Room/AC Disagreement Threshold",
+      "min": 0.5,
+      "max": 5,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "1.0"
+    },
+    "input_number.bedroomb_room_primary_last_seen_value": {
+      "name": "bedroomb_room_primary last seen value",
+      "min": -20,
+      "max": 50,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "24.5"
+    },
+    "input_number.bedroomb_room_secondary_last_seen_value": {
+      "name": "bedroomb_room_secondary last seen value",
+      "min": -20,
+      "max": 50,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "26.3"
+    },
+    "input_number.bedroomb_room_sensor_min_battery": {
+      "name": "BedroomB Room Sensor Min Battery",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "mode": "box",
+      "unit_of_measurement": "%",
+      "value": "10.0"
+    },
+    "input_number.bedroomb_room_sensor_stale_hours": {
+      "name": "BedroomB Room Sensor Stale Hours",
+      "min": 1,
+      "max": 12,
+      "step": 0.5,
+      "mode": "box",
+      "value": "5.0"
+    },
+    "input_number.bedroomb_summer_outside_threshold": {
+      "name": "BedroomB Summer Outside Threshold",
+      "min": 10,
+      "max": 25,
+      "step": 0.5,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "15.0"
+    },
+    "input_number.bedroomb_target_temperature": {
+      "name": "BedroomB Mild Summer Day Target",
+      "min": 18,
+      "max": 28,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "24.4"
+    },
+    "input_number.bedroomb_venti_in_offset": {
+      "name": "BedroomB Venti In Offset",
+      "min": -5,
+      "max": 5,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "2.0"
+    },
+    "input_number.bedroomb_winter_outside_threshold": {
+      "name": "BedroomB Winter Outside Threshold",
+      "min": -10,
+      "max": 15,
+      "step": 0.5,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "8.0"
+    },
+    "input_number.bedroomb_winter_start_delta": {
+      "name": "BedroomB Day Winter Start Delta",
+      "min": 0.1,
+      "max": 3,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "0.5"
+    },
+    "input_number.bedroomb_winter_target": {
+      "name": "BedroomB Winter Day Target",
+      "min": 16,
+      "max": 26,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "22.0"
+    },
+    "input_number.bedrooms_away_relax_delta": {
+      "name": "BedroomS Away Relax Delta",
+      "min": 0,
+      "max": 6,
+      "step": 0.5,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "3.0"
+    },
+    "input_number.bedrooms_coil_cooldown_minutes": {
+      "name": "BedroomS Coil Cooldown Minutes",
+      "min": 1,
+      "max": 20,
+      "step": 1,
+      "mode": "box",
+      "unit_of_measurement": "min",
+      "value": "5.0"
+    },
+    "input_number.bedrooms_cooling_fan_mode": {
+      "name": "BedroomS Cooling Fan Mode",
+      "min": 1,
+      "max": 5,
+      "step": 1,
+      "mode": "slider",
+      "value": "2.0"
+    },
+    "input_number.bedrooms_cooling_overshoot": {
+      "name": "BedroomS Cooling Overshoot",
+      "min": 0,
+      "max": 1,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "0.1"
+    },
+    "input_number.bedrooms_cooling_start_delta": {
+      "name": "BedroomS Cooling Start Delta",
+      "min": 0.1,
+      "max": 1,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "0.3"
+    },
+    "input_number.bedrooms_cooling_stop_room_temp": {
+      "name": "BedroomS Cooling Stop Room Temp",
+      "min": 0,
+      "max": 40,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "0.0"
+    },
+    "input_number.bedrooms_fan_boost_release_margin": {
+      "name": "BedroomS Fan Boost Release Margin",
+      "min": 0.1,
+      "max": 1.5,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "0.5"
+    },
+    "input_number.bedrooms_fan_boost_threshold": {
+      "name": "BedroomS Fan Boost Threshold",
+      "min": 0.5,
+      "max": 3,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "1.0"
+    },
+    "input_number.bedrooms_hot_summer_target": {
+      "name": "BedroomS Hot Summer Target",
+      "min": 22,
+      "max": 27,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "24.5"
+    },
+    "input_number.bedrooms_manual_target_temperature": {
+      "name": "BedroomS Manual Target Temperature",
+      "min": 16,
+      "max": 31,
+      "step": 0.5,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "23.5"
+    },
+    "input_number.bedrooms_mild_outside_threshold": {
+      "name": "BedroomS Mild Outside Threshold",
+      "min": 20,
+      "max": 35,
+      "step": 0.5,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "30.0"
+    },
+    "input_number.bedrooms_night_cooling_start_delta": {
+      "name": "BedroomS Night Cooling Start Delta",
+      "min": 0.1,
+      "max": 2,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "0.2"
+    },
+    "input_number.bedrooms_night_fixed_cooling_target": {
+      "name": "BedroomS Night Fixed Cooling Target",
+      "min": 18,
+      "max": 30,
+      "step": 0.5,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "24.0"
+    },
+    "input_number.bedrooms_night_winter_start_delta": {
+      "name": "BedroomS Night Winter Start Delta",
+      "min": 0.1,
+      "max": 3,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "2.0"
+    },
+    "input_number.bedrooms_outside_sensor_min_battery": {
+      "name": "BedroomS Outside Sensor Min Battery",
+      "min": 0,
+      "max": 50,
+      "step": 1,
+      "mode": "box",
+      "unit_of_measurement": "%",
+      "value": "10.0"
+    },
+    "input_number.bedrooms_override_duration": {
+      "name": "BedroomS Override Duration",
+      "min": 5,
+      "max": 480,
+      "step": 5,
+      "mode": "box",
+      "unit_of_measurement": "min",
+      "value": "20.0"
+    },
+    "input_number.bedrooms_return_boost_fan_mode": {
+      "name": "BedroomS Return Boost Fan Mode",
+      "min": 1,
+      "max": 5,
+      "step": 1,
+      "mode": "box",
+      "value": "5.0"
+    },
+    "input_number.bedrooms_return_boost_minutes": {
+      "name": "BedroomS Return Boost Minutes",
+      "min": 0,
+      "max": 60,
+      "step": 5,
+      "mode": "box",
+      "unit_of_measurement": "min",
+      "value": "20.0"
+    },
+    "input_number.bedrooms_room_ac_disagreement_threshold": {
+      "name": "BedroomS Room/AC Disagreement Threshold",
+      "min": 0.5,
+      "max": 5,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "1.5"
+    },
+    "input_number.bedrooms_room_last_seen_value": {
+      "name": "bedrooms_room last seen value",
+      "min": -20,
+      "max": 50,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "24.5"
+    },
+    "input_number.bedrooms_room_sensor_min_battery": {
+      "name": "BedroomS Room Sensor Min Battery",
+      "min": 0,
+      "max": 50,
+      "step": 1,
+      "mode": "box",
+      "unit_of_measurement": "%",
+      "value": "10.0"
+    },
+    "input_number.bedrooms_room_sensor_stale_hours": {
+      "name": "BedroomS Room Sensor Stale Hours",
+      "min": 1,
+      "max": 12,
+      "step": 0.5,
+      "mode": "box",
+      "value": "5.0"
+    },
+    "input_number.bedrooms_summer_night_target": {
+      "name": "BedroomS Summer Night Target",
+      "min": 18,
+      "max": 31,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "23.4"
+    },
+    "input_number.bedrooms_summer_outside_threshold": {
+      "name": "BedroomS Summer Outside Threshold",
+      "min": 10,
+      "max": 25,
+      "step": 0.5,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "15.0"
+    },
+    "input_number.bedrooms_target_temperature": {
+      "name": "BedroomS Target Temperature",
+      "min": 22,
+      "max": 26,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "24.7"
+    },
+    "input_number.bedrooms_venti_in_offset": {
+      "name": "BedroomS Venti In Offset",
+      "min": 0,
+      "max": 5,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "2.0"
+    },
+    "input_number.bedrooms_winter_night_target": {
+      "name": "BedroomS Winter Night Target",
+      "min": 16,
+      "max": 26,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "21.0"
+    },
+    "input_number.bedrooms_winter_outside_threshold": {
+      "name": "BedroomS Winter Outside Threshold",
+      "min": -5,
+      "max": 15,
+      "step": 0.5,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "8.0"
+    },
+    "input_number.bedrooms_winter_start_delta": {
+      "name": "BedroomS Winter Start Delta",
+      "min": 0.1,
+      "max": 2,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "1.5"
+    },
+    "input_number.bedrooms_winter_target": {
+      "name": "BedroomS Winter Target",
+      "min": 18,
+      "max": 24,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "22.0"
+    },
+    "input_number.livingr_away_relax_delta": {
+      "name": "LivingR Away Relax Delta",
+      "min": 0,
+      "max": 6,
+      "step": 0.5,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "3.0"
+    },
+    "input_number.livingr_coil_cooldown_minutes": {
+      "name": "LivingR Coil Cooldown Minutes",
+      "icon": "mdi:fan-clock",
+      "min": 1,
+      "max": 20,
+      "step": 1,
+      "mode": "box",
+      "unit_of_measurement": "min",
+      "value": "14.0"
+    },
+    "input_number.livingr_cooling_fan_mode": {
+      "name": "LivingR Cooling Fan Mode",
+      "icon": "mdi:fan",
+      "min": 1,
+      "max": 5,
+      "step": 1,
+      "mode": "box",
+      "value": "2.0"
+    },
+    "input_number.livingr_cooling_overshoot": {
+      "name": "LivingR Cooling Overshoot",
+      "icon": "mdi:thermometer-chevron-down",
+      "min": 0,
+      "max": 1,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "0.1"
+    },
+    "input_number.livingr_cooling_start_delta": {
+      "name": "LivingR Day Cooling Start Delta",
+      "min": 0.1,
+      "max": 1,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "0.2"
+    },
+    "input_number.livingr_cooling_stop_room_temp": {
+      "name": "LivingR Cooling Stop Room Temp",
+      "icon": "mdi:thermometer-check",
+      "min": 0,
+      "max": 40,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "24.0"
+    },
+    "input_number.livingr_fan_boost_release_margin": {
+      "name": "LivingR Fan Boost Release Margin",
+      "min": 0.1,
+      "max": 1.5,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "0.5"
+    },
+    "input_number.livingr_fan_boost_threshold": {
+      "name": "LivingR Fan Boost Threshold",
+      "min": 0.5,
+      "max": 3,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "1.0"
+    },
+    "input_number.livingr_hot_summer_target": {
+      "name": "LivingR Hot Summer Day Target",
+      "min": 22,
+      "max": 27,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "23.9"
+    },
+    "input_number.livingr_manual_target_temperature": {
+      "name": "LivingR Manual Target Temperature",
+      "min": 16,
+      "max": 31,
+      "step": 0.5,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "24.5"
+    },
+    "input_number.livingr_mild_outside_threshold": {
+      "name": "LivingR Mild Outside Threshold",
+      "icon": "mdi:weather-cloudy",
+      "min": 20,
+      "max": 35,
+      "step": 0.5,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "30.0"
+    },
+    "input_number.livingr_night_cooling_start_delta": {
+      "name": "LivingR Night Cooling Start Delta",
+      "min": 0.1,
+      "max": 2,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "0.4"
+    },
+    "input_number.livingr_night_winter_start_delta": {
+      "name": "LivingR Night Winter Start Delta",
+      "min": 0.1,
+      "max": 3,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "2.0"
+    },
+    "input_number.livingr_outside_sensor_min_battery": {
+      "name": "LivingR Outside Sensor Min Battery",
+      "icon": "mdi:battery-alert",
+      "min": 0,
+      "max": 50,
+      "step": 1,
+      "mode": "box",
+      "unit_of_measurement": "%",
+      "value": "10.0"
+    },
+    "input_number.livingr_override_duration": {
+      "name": "LivingR Override Duration",
+      "min": 5,
+      "max": 480,
+      "step": 5,
+      "mode": "box",
+      "unit_of_measurement": "min",
+      "value": "60.0"
+    },
+    "input_number.livingr_return_boost_fan_mode": {
+      "name": "LivingR Return Boost Fan Mode",
+      "min": 1,
+      "max": 5,
+      "step": 1,
+      "mode": "box",
+      "value": "5.0"
+    },
+    "input_number.livingr_return_boost_minutes": {
+      "name": "LivingR Return Boost Minutes",
+      "min": 0,
+      "max": 60,
+      "step": 5,
+      "mode": "box",
+      "unit_of_measurement": "min",
+      "value": "20.0"
+    },
+    "input_number.livingr_room_ac_disagreement_threshold": {
+      "name": "LivingR Room/AC Disagreement Threshold",
+      "min": 0.5,
+      "max": 5,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "1.5"
+    },
+    "input_number.livingr_room_last_seen_value": {
+      "name": "livingr_room last seen value",
+      "min": -20,
+      "max": 50,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "24.0"
+    },
+    "input_number.livingr_room_sensor_min_battery": {
+      "name": "LivingR Room Sensor Min Battery",
+      "icon": "mdi:battery-alert",
+      "min": 0,
+      "max": 50,
+      "step": 1,
+      "mode": "box",
+      "unit_of_measurement": "%",
+      "value": "10.0"
+    },
+    "input_number.livingr_room_sensor_stale_hours": {
+      "name": "LivingR Room Sensor Stale Hours",
+      "min": 1,
+      "max": 12,
+      "step": 0.5,
+      "mode": "box",
+      "value": "5.0"
+    },
+    "input_number.livingr_summer_night_target": {
+      "name": "LivingR Summer Night Target",
+      "min": 18,
+      "max": 31,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "30.0"
+    },
+    "input_number.livingr_summer_outside_threshold": {
+      "name": "LivingR Summer Outside Threshold",
+      "icon": "mdi:white-balance-sunny",
+      "min": 10,
+      "max": 25,
+      "step": 0.5,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "15.0"
+    },
+    "input_number.livingr_target_temperature": {
+      "name": "LivingR Mild Summer Day Target",
+      "min": 22,
+      "max": 26,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "24.1"
+    },
+    "input_number.livingr_venti_in_offset": {
+      "name": "LivingR Venti In Offset",
+      "icon": "mdi:thermometer-minus",
+      "min": 0,
+      "max": 5,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "2.0"
+    },
+    "input_number.livingr_winter_night_target": {
+      "name": "LivingR Winter Night Target",
+      "min": 16,
+      "max": 26,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "19.0"
+    },
+    "input_number.livingr_winter_outside_threshold": {
+      "name": "LivingR Winter Outside Threshold",
+      "icon": "mdi:snowflake-thermometer",
+      "min": -5,
+      "max": 15,
+      "step": 0.5,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "8.0"
+    },
+    "input_number.livingr_winter_start_delta": {
+      "name": "LivingR Day Winter Start Delta",
+      "min": 0.1,
+      "max": 2,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "1.5"
+    },
+    "input_number.livingr_winter_target": {
+      "name": "LivingR Winter Day Target",
+      "min": 18,
+      "max": 24,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "22.0"
+    },
+    "input_number.xiaomi_miot_self_heal_cooldown_hours": {
+      "name": "Xiaomi MIoT Self-Heal Cooldown Hours",
+      "min": 1,
+      "max": 24,
+      "step": 0.5,
+      "mode": "box",
+      "value": "6.0"
+    },
+    "input_number.xiaomi_miot_self_heal_stale_hours": {
+      "name": "Xiaomi MIoT Self-Heal Stale Hours",
+      "min": 1,
+      "max": 24,
+      "step": 0.5,
+      "mode": "box",
+      "value": "3.0"
+    },
+    "input_select.bedroomb_manual_fan_mode": {
+      "name": "BedroomB Manual Fan Mode",
+      "icon": "mdi:fan",
+      "options": ["auto","1","2","3","4","5"],
+      "value": "2"
+    },
+    "input_select.bedroomb_manual_hvac_mode": {
+      "name": "BedroomB Manual HVAC Mode",
+      "icon": "mdi:air-conditioner",
+      "options": ["off","heat","dry","cool","fan_only","heat_cool"],
+      "value": "cool"
+    },
+    "input_select.bedroomb_manual_swing_mode": {
+      "name": "BedroomB Manual Swing Mode",
+      "icon": "mdi:swap-vertical",
+      "options": ["auto","1_up","2","3","4","5_down","swing"],
+      "value": "4"
+    },
+    "input_select.bedrooms_manual_fan_mode": {
+      "name": "BedroomS Manual Fan Mode",
+      "icon": "mdi:fan",
+      "options": ["auto","1","2","3","4","5"],
+      "value": "4"
+    },
+    "input_select.bedrooms_manual_hvac_mode": {
+      "name": "BedroomS Manual HVAC Mode",
+      "icon": "mdi:thermostat",
+      "options": ["off","heat","dry","cool","fan_only","heat_cool"],
+      "value": "cool"
+    },
+    "input_select.bedrooms_manual_swing_mode": {
+      "name": "BedroomS Manual Swing Mode",
+      "icon": "mdi:swap-vertical",
+      "options": ["auto","1_up","2","3","4","5_down","swing"],
+      "value": "1_up"
+    },
+    "input_select.livingr_manual_fan_mode": {
+      "name": "LivingR Manual Fan Mode",
+      "icon": "mdi:fan",
+      "options": ["auto","1","2","3","4","5"],
+      "value": "5"
+    },
+    "input_select.livingr_manual_hvac_mode": {
+      "name": "LivingR Manual HVAC Mode",
+      "icon": "mdi:air-conditioner",
+      "options": ["off","heat","dry","cool","fan_only","heat_cool"],
+      "value": "cool"
+    },
+    "input_select.livingr_manual_swing_mode": {
+      "name": "LivingR Manual Swing Mode",
+      "icon": "mdi:swap-vertical",
+      "options": ["auto","1_up","2","3","4","5_down","swing"],
+      "value": "5_down"
+    }
+  }
+}

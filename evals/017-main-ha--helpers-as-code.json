@@ -1,0 +1,60 @@
+{
+  "id": "017",
+  "branch": "main",
+  "name": "ha--helpers-as-code",
+  "category": "ha",
+  "description": "Every tunable in the climate control system lives in a Home Assistant input_number / input_boolean / input_select / input_text / input_datetime helper, and NONE of them exist in the repository. main.tf declares 98 homeassistant_automation resources and zero helpers. The provider in use, Fabianoshz/homeassistant 0.2.3, offers only homeassistant_area, homeassistant_automation, homeassistant_device, homeassistant_entity and homeassistant_floor - there is no input_number resource type, so helpers cannot be expressed as terraform resources at all. They exist solely because assorted one-off scripts under tools/home-assistant-live/ POSTed them over the websocket API at some point, and each script hardcodes its own seed values. There is also no terraform state for this stack (protected/state/ holds proxmox-vm, vmware-vm and vmware-vmManual only), so the stack has never been applied and drift has never been reconciled. The practical consequence: 45 days of hand-tuning - the values that actually decide how warm the rooms are - exist only in Home Assistant's recorder database. They are not reviewable, not diffable, not restorable, and a rebuild of the HA instance loses them silently while terraform happily restores automations that reference helpers which no longer exist. This eval makes the helper set declarative: a checked-in snapshot plus an idempotent sync tool that can export live state, diff it against the file, and apply the file back.",
+  "implementation": {
+    "files": [
+      "app/stacks/home-assistant/helpers.json",
+      "tools/home-assistant-live/helpers_sync.js",
+      "tools/home-assistant-live/validate_helpers_sync.js"
+    ],
+    "changes": [
+      "helpers.json: declarative snapshot of every input_* helper - entity id, friendly name, and for input_number the min/max/step/mode/unit/icon config, plus the current value. Sorted by entity id so diffs are stable and reviewable.",
+      "helpers_sync.js --export: reads the live helper set over the websocket API and writes helpers.json. Refuses to write if the live set is empty or if the count collapses versus the existing file, so a transient API failure cannot silently blank the snapshot.",
+      "helpers_sync.js --check: diffs live against helpers.json and exits non-zero on any difference. Reports three kinds separately - missing live, extra live, and config/value mismatch - because they need different responses.",
+      "helpers_sync.js --apply: creates missing helpers and corrects drifted config/values from the file. Idempotent: a second run reports zero changes. Requires --yes to write, prints the plan otherwise.",
+      "Self-learning helpers (stratification offsets, last-seen mirrors) have their VALUE treated as control-loop output rather than settings: --check ignores value drift for them, and --apply seeds the value on creation only. Their config is still declared and enforced. Without this the two learners, which rewrite themselves every few minutes, would leave every --check dirty and the tool would be useless."
+    ]
+  },
+  "validation": {
+    "type": "functional_test",
+    "script": "tools/home-assistant-live/validate_helpers_sync.js",
+    "result": "10/10 checks passed. 150 helpers exported and declared; --check clean immediately after --export; C6 proves main.tf references 150 helpers with 0 undeclared.",
+    "checks": [
+      "C1: --export writes a snapshot whose helper count equals the live count",
+      "C2: --check immediately after --export reports zero drift and exits 0",
+      "C3: perturbing one value in the file makes --check report exactly that one mismatch and exit non-zero",
+      "C4: --check does not mutate live state (helper values identical before and after)",
+      "C5: --apply without --yes prints a plan and writes nothing",
+      "C6: every helper referenced by a main.tf automation template exists in the snapshot (no dangling reference)",
+      "C7: the snapshot round-trips - parsing it and re-serialising is byte-identical",
+      "C8: --export refuses to write when the live helper set is empty",
+      "C9: the validation run leaves helpers.json byte-identical to how it found it",
+      "C10: the runtime-value exemption is scoped to the value only - a learner's value drift in the file is ignored, but corrupting its config is still caught"
+    ]
+  },
+  "status": "pass",
+  "incidents": [
+    {
+      "what": "The first validation run scored 5/9. Three of the four failures shared one root cause: the snapshot declared the value of the two self-learning stratification offsets, which move on their own every few minutes, so --check was already dirty seconds after --export.",
+      "detected_by": "The eval's own C2 (check-after-export must be clean) and C7 (serialiser stability).",
+      "fix": "Split settings from runtime output. RUNTIME_VALUE marks helpers whose value the control loop owns; their config stays declared and enforced, their value does not. C10 was added to assert the exemption is scoped to the value and does not also swallow config drift.",
+      "root_cause": "Treating a control-loop output as configuration. A snapshot that declares a learned value is asserting that the learner should not learn."
+    },
+    {
+      "what": "C6 initially reported 4 undeclared helpers that are not helpers at all: input_number.set_value, input_boolean.turn_on, input_boolean.turn_off, input_datetime.set_datetime.",
+      "detected_by": "C6 failing against a snapshot that was in fact complete.",
+      "fix": "NOT_ENTITIES excludes service names, and is exported from helpers_sync.js so the validator asserts against the same list the tool uses rather than a second copy that could drift from it.",
+      "root_cause": "Service calls and entity ids are indistinguishable by shape - both are domain.name with an input_* domain. The regex could not tell them apart and nothing else was consulted."
+    },
+    {
+      "what": "C7 was originally written to re-export from live and compare bytes. That measures the learner, not the serialiser, so it failed for a reason unrelated to what it claimed to test.",
+      "detected_by": "It failed at the same moment C2 did, with the same underlying cause.",
+      "fix": "C7 now parses the file on disk and re-serialises it, which is the round-trip property it was supposed to assert.",
+      "root_cause": "A test whose observable depends on live state cannot isolate the pure function it names."
+    }
+  ],
+  "notes": "Raised by the user: 'като си рънал API реквестите, ти просто не си ги създал като код'. Correct, and broader than the two helpers eval-015 added - it is true of all 150. Note what this eval is NOT: it is not the cause of the rooms being warm. That was measured separately and is ambient (occupied sensor +0.22 C, untouched room +0.26 C, outside +0.28 C over the same windows)."
+}
