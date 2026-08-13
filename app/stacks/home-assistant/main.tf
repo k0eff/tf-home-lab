@@ -400,6 +400,12 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
 
   action = jsonencode([
     {
+      # Away -> home edge detector. `livingr_was_away` is a one-cycle latch: held on
+      # while away_now is true, and the instant away_now goes false the still-on latch
+      # is what reveals the transition happened - it stamps away_ended_at = now (starts
+      # the return-boost fan window read by the choose branches below), logs, then
+      # clears itself for the next away period. away_now is recomputed from scratch
+      # here since HA templates carry no state from the previous run.
       "alias" = "Track away transition for return-boost timer"
       "if" = [
         {
@@ -452,6 +458,13 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
       ]
     },
     {
+      # Fan-speed boost hysteresis latch, independent of the away/return-boost latch
+      # above. Turns on the instant |error| reaches fan_boost_threshold; turns off only
+      # once |error| drops below (threshold - release_margin), not merely below the
+      # threshold itself - the margin gap stops the fan from flapping between speeds
+      # while error hovers right at the boundary. Read by the choose branches below via
+      # cooling_fan_mode (boosted fan speed while this latch OR the return-boost window
+      # from the step above is active).
       "alias" = "Track fan-speed boost latch (error threshold trigger)"
       "if" = [
         {
@@ -486,9 +499,19 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
         }
       ]
     },
+    # Day/night/summer/winter comfort-band state machine for this room's climate
+    # entity. Every branch's condition template recomputes outside/effective/target/
+    # error/dynamic_setpoint from scratch (HA templates carry no state between steps) -
+    # only the branch selector and the final action differ. See the automation
+    # description for the target/threshold formulas; comments below say what each
+    # branch is *for*, not the formula itself.
     {
       "choose" = [
         {
+          # Air-clean window inside the night sleep window: force fan_only at speed 5
+          # (or the boosted speed if the fan-boost/return-boost latch is active) so the
+          # unit circulates air without heating or cooling while the room should be
+          # asleep. The dummy temperature=30 is inert under fan_only.
           "alias" = "Night: air cleaning fan only at max speed"
           "conditions" = [
             {
@@ -535,6 +558,12 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
           ]
         },
         {
+          # Outside the air-clean window but still inside night_sleep_window: force the
+          # unit off. Gated so it never fires while a comfort start-delta is already
+          # exceeded (summer effective >= target+delta, or winter effective <=
+          # target-delta) - in that case the summer/winter branches below take over
+          # instead, so night sleep quiet-hours don't block genuinely needed cooling
+          # or heating.
           "alias" = "Night: sleep keeps climate off outside air-clean window"
           "conditions" = [
             {
@@ -563,6 +592,10 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
           ]
         },
         {
+          # Daytime air-clean sub-window (day_start .. midnight) with no motion for
+          # 30+ minutes: while the unit is already running fan_only, step the fan speed
+          # up (out of speeds 2/5) for extra circulation during quiet daytime hours.
+          # Does not start the unit - only adjusts fan speed if it's already fan_only.
           "alias" = "Daytime no motion: raise fan while climate is already running"
           "conditions" = [
             {
@@ -591,6 +624,12 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
           ]
         },
         {
+          # Counterpart to the no-motion branch above: motion returns while the unit is
+          # already running (fan_only speed 2/3, or cool at the wrong fan speed) -
+          # step the fan back down. The sequence below is itself a nested choose:
+          # if currently cooling, restore the configured cooling fan speed (boosted or
+          # base); otherwise (fan_only) fall through to the default action and set fan
+          # speed 3 (boosted speed if the fan-boost/return-boost latch is active).
           "alias" = "Daytime motion: restore fan 3 while climate is already running"
           "conditions" = [
             {
@@ -602,6 +641,9 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
             {
               "choose" = [
                 {
+                  # Nested selector: only this leaf checks live climate state directly
+                  # (cheap, no need for the full recompute) since the outer branch
+                  # already established that motion is back and the unit is running.
                   "alias" = "Motion while cooling: restore configured cooling fan"
                   "conditions" = [
                     {
@@ -645,6 +687,13 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
           ]
         },
         {
+          # Main summer cooling branch. Fires when NOT in the night air-clean window,
+          # climate_mode is summer, and (night_sleep_window implies allow_night_cooling
+          # is on) - so night sleep hours are cooling-blocked by default unless the
+          # user opted in. dynamic_setpoint (clamped 16..31, derived from ac_temp and
+          # error) is what actually gets sent as the setpoint, not `target` itself - the
+          # second condition only re-applies mode/fan/temp when something would change,
+          # to avoid re-issuing identical commands every automation cycle.
           "alias" = "Summer: cool when room is above target comfort band and outside mode is summer"
           "conditions" = [
             {
@@ -695,6 +744,11 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
           ]
         },
         {
+          # Target reached (or mode left summer) while actively cooling: don't cut
+          # power immediately - switch to fan_only at the cooling fan speed and record
+          # a cooldown timestamp (input_number.set_value). Lets the coil dry out and the
+          # residual cold air get circulated, which is what the next branch's
+          # coil_cooldown_minutes wait is timed against.
           "alias" = "Summer: coil cool-down after target is reached or outside mode is no longer summer"
           "conditions" = [
             {
@@ -741,6 +795,11 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
           ]
         },
         {
+          # Natural conclusion of the coil cool-down branch above: once the unit has
+          # been fan_only at the cooling fan speed for coil_cooldown_minutes, power off
+          # for real. Re-derives the same fan_only+fan-speed state as its condition
+          # rather than reading a stored "cooling down" flag, consistent with every
+          # other branch here recomputing from scratch.
           "alias" = "Summer: turn off after coil cool-down"
           "conditions" = [
             {
@@ -787,6 +846,12 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
           ]
         },
         {
+          # Winter counterpart to the summer cooling branch: fires when NOT in the night
+          # air-clean window, climate_mode is winter, and effective is far enough below
+          # target (by active_winter_start_delta). No allow_night_cooling-style opt-in
+          # gate here - night heating isn't blocked the way night cooling is. Unlike
+          # cooling, winter has no coil cool-down step: heat is cut directly by the
+          # turn-off branch below once target is reached.
           "alias" = "Winter: heat when room is below 21.5C and outside mode is winter"
           "conditions" = [
             {
@@ -837,6 +902,9 @@ resource "homeassistant_automation" "test_aircon_livingr_room_sensor_comfort_ban
           ]
         },
         {
+          # Mirrors the summer turn-off branch, but direct - no cool-down step needed
+          # for heating. Fires while actively heating and either mode left winter or
+          # effective has caught up to target.
           "alias" = "Winter: turn off after target is reached or outside mode is no longer winter"
           "conditions" = [
             {
@@ -1295,6 +1363,15 @@ resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_ba
 
   action = jsonencode([
     {
+      # Stratification learning (BedroomB only - two room sensors instead of one).
+      # While the occupied-level ("primary") sensor is healthy, slow-blend (95% old /
+      # 5% new EMA, clamped -3..5, rounded to 2dp) two offsets: how far the AC's own
+      # sensor (ac_temp) reads from primary, and how far the ceiling ("secondary")
+      # sensor reads from primary. Nothing is written while primary is unhealthy - an
+      # offset is only trustworthy when learned against a sensor we currently trust.
+      # Read downstream wherever ac_temp or the secondary sensor stand in for primary
+      # (conflict resolution, fallback) - this is the stratification-frame
+      # normalisation eval 025 checks for.
       "alias" = "Learn stratification offsets against the occupied-level room sensor"
       "if" = [
         {
@@ -1304,6 +1381,8 @@ resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_ba
       ]
       "then" = [
         {
+          # Skip the blend if the AC's own sensor isn't reporting - an unavailable
+          # ac_temp must not pull a bogus 0 into the learned average.
           "if" = [
             {
               "condition" = "template"
@@ -1323,6 +1402,7 @@ resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_ba
           ]
         },
         {
+          # Same guard for the ceiling sensor's offset.
           "if" = [
             {
               "condition" = "template"
@@ -1344,6 +1424,11 @@ resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_ba
       ]
     },
     {
+      # Away -> home edge detector, same pattern as the LivingR automation: a one-cycle
+      # "was_away" latch held on while away_now is true; the instant away_now goes
+      # false the still-on latch reveals the transition, stamps away_ended_at = now
+      # (starts the return-boost fan window read by the choose branches below), logs,
+      # then clears itself for the next away period.
       "alias" = "Track away transition for return-boost timer"
       "if" = [
         {
@@ -1396,6 +1481,17 @@ resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_ba
       ]
     },
     {
+      # Fan-speed boost hysteresis latch, independent of the away/return-boost latch
+      # above. Unlike LivingR/BedroomS, this compares boost_error (not |error|):
+      # boost_error = error in summer, -error in winter, so it is positive exactly when
+      # the unit needs to work harder regardless of mode - the plain ">= threshold"
+      # comparison below does the job abs() does elsewhere. Turns on once boost_error
+      # reaches fan_boost_threshold; turns off once it drops below
+      # (threshold - release_margin) OR goes unavailable (boost_error is none) - this
+      # room releases the latch on missing data rather than holding it, unlike
+      # LivingR's off-branch which requires a concrete error value to release. Read by
+      # the choose branches below via cooling_fan_mode (boosted fan speed while this
+      # latch OR the return-boost window is active).
       "alias" = "Track fan-speed boost latch (error threshold trigger)"
       "if" = [
         {
@@ -1430,9 +1526,17 @@ resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_ba
         }
       ]
     },
+    # Day/night/summer/winter comfort-band state machine for this room's climate
+    # entity - same shape as LivingR's, but effective/target/error are derived from
+    # the stratification-normalised primary/secondary/ac_temp blend computed in the
+    # learning step above instead of a single raw room sensor. Every branch's condition
+    # template recomputes it all from scratch (HA templates carry no state between
+    # steps); comments below say what each branch is *for*, not the formula itself.
     {
       "choose" = [
         {
+          # Air-clean window inside the night sleep window: force fan_only at speed 5
+          # (or the boosted speed if the fan-boost/return-boost latch is active).
           "alias" = "Night: air cleaning fan only at max speed"
           "conditions" = [
             {
@@ -1479,6 +1583,12 @@ resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_ba
           ]
         },
         {
+          # Outside the air-clean window but still inside night_sleep_window: force the
+          # unit off. Same gating as LivingR's equivalent branch - skipped while a
+          # comfort start-delta is already exceeded (summer effective >= target+delta,
+          # or winter effective <= target-delta), so night quiet-hours never block
+          # genuinely needed cooling or heating; the summer/winter branches below
+          # handle that case instead.
           "alias" = "Night: keep climate off while inside the night comfort band"
           "conditions" = [
             {
@@ -1507,6 +1617,9 @@ resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_ba
           ]
         },
         {
+          # Daytime air-clean sub-window with no motion for 30+ minutes: while the unit
+          # is already running fan_only, step the fan speed up for extra circulation
+          # during quiet daytime hours. Does not start the unit.
           "alias" = "Daytime no motion: raise fan while climate is already running"
           "conditions" = [
             {
@@ -1535,6 +1648,12 @@ resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_ba
           ]
         },
         {
+          # Counterpart to the no-motion branch above: motion returns while the unit is
+          # already running - step the fan back down. The sequence below is itself a
+          # nested choose: if currently cooling, restore the configured cooling fan
+          # speed (boosted or base); otherwise (fan_only) fall through to the default
+          # action and set fan speed 3 (boosted if the fan-boost/return-boost latch is
+          # active).
           "alias" = "Daytime motion: restore fan 3 while climate is already running"
           "conditions" = [
             {
@@ -1546,6 +1665,9 @@ resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_ba
             {
               "choose" = [
                 {
+                  # Nested selector: only this leaf checks live climate state directly
+                  # since the outer branch already established motion is back and the
+                  # unit is running.
                   "alias" = "Motion while cooling: restore configured cooling fan"
                   "conditions" = [
                     {
@@ -1589,6 +1711,11 @@ resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_ba
           ]
         },
         {
+          # Main summer cooling branch. Fires when NOT in the night air-clean window,
+          # climate_mode is summer, and (night_sleep_window implies allow_night_cooling
+          # is on). dynamic_setpoint (clamped 16..31) is what actually gets sent as the
+          # setpoint, not `target` itself - the second condition only re-applies mode/
+          # fan/temp when something would change.
           "alias" = "Summer: cool when room is above target comfort band and outside mode is summer"
           "conditions" = [
             {
@@ -1639,6 +1766,10 @@ resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_ba
           ]
         },
         {
+          # Target reached (or mode left summer) while actively cooling: don't cut
+          # power immediately - switch to fan_only at the cooling fan speed and record
+          # a cooldown timestamp. Lets the coil dry out and residual cold air circulate
+          # before the next branch's coil_cooldown_minutes wait elapses.
           "alias" = "Summer: coil cool-down after target is reached or outside mode is no longer summer"
           "conditions" = [
             {
@@ -1685,6 +1816,12 @@ resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_ba
           ]
         },
         {
+          # Natural conclusion of the coil cool-down branch above: once the unit has
+          # been fan_only for coil_cooldown_minutes (by the climate entity's
+          # last_changed timestamp), power off for real. Unlike LivingR's equivalent
+          # branch, this
+          # doesn't also check the fan speed still matches cooling_fan_mode - any
+          # fan_only state that has held long enough qualifies.
           "alias" = "Summer: turn off after coil cool-down"
           "conditions" = [
             {
@@ -1731,6 +1868,11 @@ resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_ba
           ]
         },
         {
+          # Winter counterpart to the summer cooling branch: fires when NOT in the night
+          # air-clean window, climate_mode is winter, and effective is far enough below
+          # target. No allow_night_cooling-style opt-in gate - night heating isn't
+          # blocked the way night cooling is. No coil cool-down step either: heat is
+          # cut directly by the turn-off branch below once target is reached.
           "alias" = "Winter: heat when room is below 21.5C and outside mode is winter"
           "conditions" = [
             {
@@ -1781,6 +1923,9 @@ resource "homeassistant_automation" "test_aircon_bedroomb_room_sensor_comfort_ba
           ]
         },
         {
+          # Mirrors the summer turn-off branch, but direct - no cool-down step needed
+          # for heating. Fires while actively heating and either mode left winter or
+          # effective has caught up to target.
           "alias" = "Winter: turn off after target is reached or outside mode is no longer winter"
           "conditions" = [
             {
@@ -4863,8 +5008,15 @@ resource "homeassistant_automation" "test_lossnay_fan_boost" {
 
   action = jsonencode([
     {
+      # Four branches selected purely by trigger.id (the two "activate" buttons,
+      # the 1-minute expiry poll, and an explicit cancel). Re-pressing either
+      # activate button while a boost is already running just overwrites the
+      # expiry timestamp with a fresh one - there is no separate "extend"
+      # branch because activating again already does that.
       "choose" = [
         {
+          # Branch: 30-minute boost button pressed. Sets the expiry clock,
+          # marks the boost active, and raises fan speed to 4.
           "alias" = "Activate 30min boost"
           "conditions" = [
             {
@@ -4908,6 +5060,8 @@ resource "homeassistant_automation" "test_lossnay_fan_boost" {
           ]
         },
         {
+          # Branch: 60-minute boost button pressed. Same as the 30-minute
+          # branch with a longer expiry; fan speed target is identical (4).
           "alias" = "Activate 60min boost"
           "conditions" = [
             {
@@ -4951,6 +5105,10 @@ resource "homeassistant_automation" "test_lossnay_fan_boost" {
           ]
         },
         {
+          # Branch: the 1-minute poll fires, the boost is active, and its
+          # "until" timestamp has passed. Restores fan speed to the baseline
+          # (2) and clears the active flag - the natural-timeout counterpart
+          # to the explicit cancel branch below.
           "alias" = "Expire boost"
           "conditions" = [
             {
@@ -4985,6 +5143,12 @@ resource "homeassistant_automation" "test_lossnay_fan_boost" {
           ]
         },
         {
+          # Branch: user cancels the boost directly. Unlike the expiry branch
+          # it does not check whether the boost is currently active and does
+          # not touch input_boolean.lossnay_fan_boost_active - restoring speed
+          # 2 is safe even if pressed with no boost running, and something
+          # (this or the next expiry tick) will still clear the flag if it was
+          # set.
           "alias" = "Cancel boost"
           "conditions" = [
             {
@@ -5049,8 +5213,19 @@ resource "homeassistant_automation" "test_aircon_room_sensor_fluctuation_tracker
 
   action = jsonencode([
     {
+      # One near-identical branch per tracked sensor (LivingR room, BedroomB
+      # primary, BedroomB secondary, BedroomS room), each selected by its own
+      # trigger.id. A branch only records a new "last seen" value and stamps
+      # "last moved" if the new reading differs from the last recorded one by
+      # >= 0.1 - a bare state-changed event on an unchanged value (Xiaomi
+      # cloud sensors re-announce periodically) must NOT look like the sensor
+      # is alive and moving. The room-sensor comfort bands read this
+      # "last moved" timestamp as their staleness guard, so a sensor stuck
+      # re-announcing the same frozen value reads as stale here too, even
+      # though state_changed events keep firing for it.
       "choose" = [
         {
+          # LivingR room sensor.
           "alias" = "Track livingr_room fluctuation"
           "conditions" = [
             {
@@ -5082,6 +5257,7 @@ resource "homeassistant_automation" "test_aircon_room_sensor_fluctuation_tracker
           ]
         },
         {
+          # BedroomB primary room sensor.
           "alias" = "Track bedroomb_room_primary fluctuation"
           "conditions" = [
             {
@@ -5113,6 +5289,7 @@ resource "homeassistant_automation" "test_aircon_room_sensor_fluctuation_tracker
           ]
         },
         {
+          # BedroomB secondary (ceiling) room sensor.
           "alias" = "Track bedroomb_room_secondary fluctuation"
           "conditions" = [
             {
@@ -5144,6 +5321,7 @@ resource "homeassistant_automation" "test_aircon_room_sensor_fluctuation_tracker
           ]
         },
         {
+          # BedroomS room sensor.
           "alias" = "Track bedrooms_room fluctuation"
           "conditions" = [
             {
@@ -5342,6 +5520,12 @@ resource "homeassistant_automation" "test_aircon_bedrooms_room_sensor_comfort_ba
 
   action = jsonencode([
     {
+      # Away -> home edge detector, same pattern as LivingR/BedroomB: a one-cycle
+      # "was_away" latch held on while away_now is true; the instant away_now goes
+      # false the still-on latch reveals the transition, stamps away_ended_at = now
+      # (starts the return-boost fan window read by the choose branches below), logs,
+      # then clears itself for the next away period. `away` here also gates the
+      # fixed-cooling branch below (it never fires while the room is away).
       "alias" = "Track away transition for return-boost timer"
       "if" = [
         {
@@ -5394,6 +5578,13 @@ resource "homeassistant_automation" "test_aircon_bedrooms_room_sensor_comfort_ba
       ]
     },
     {
+      # Fan-speed boost hysteresis latch, independent of the away/return-boost latch
+      # above. Turns on the instant |error| reaches fan_boost_threshold; turns off only
+      # once |error| drops below (threshold - release_margin), not merely below the
+      # threshold - the margin gap stops the fan flapping between speeds while error
+      # hovers at the boundary. Read by the choose branches below via cooling_fan_mode.
+      # Uses plain |error| like LivingR (single room sensor), not the sign-normalised
+      # boost_error BedroomB uses for its stratification-blended effective temperature.
       "alias" = "Track fan-speed boost latch (error threshold trigger)"
       "if" = [
         {
@@ -5428,9 +5619,31 @@ resource "homeassistant_automation" "test_aircon_bedrooms_room_sensor_comfort_ba
         }
       ]
     },
+    # Day/night/summer/winter comfort-band state machine for this room's climate
+    # entity, same shape as LivingR's, PLUS one branch unique to this room: a
+    # trigger-driven fixed-cooling override for the small bedroom's overnight setpoint
+    # (see the first branch below). The three ordinary summer branches each carry an
+    # extra "not (summer_night_window and toggle on and not away)" clause so they step
+    # aside while fixed-cooling is in control; the night air-clean and night-off
+    # branches are restricted to winter months only (see their comments) because summer
+    # nights are handled either by fixed-cooling or by the summer-cool branch's relaxed
+    # night gate instead. Every branch's condition template recomputes outside/
+    # effective/target/error/dynamic_setpoint from scratch; comments below say what
+    # each branch is *for*, not the formula itself.
     {
       "choose" = [
         {
+          # Fixed-temperature override, trigger-driven rather than condition-polled -
+          # fires once when summer_night_window starts (or the fixed-cooling toggle is
+          # switched on mid-window), not every automation cycle. Sets hvac_mode=cool and
+          # a flat configured temperature (default 24C), then does NOT touch the unit
+          # again: no proportional adjustment, no re-evaluation against room/outside
+          # temperature. From here the AC's own thermostat is what maintains that
+          # setpoint for the rest of the window - this is the "small bedroom keeps a
+          # fixed temperature and the comfort-band program stays out of it, letting the
+          # unit regulate itself" behavior. The three ordinary summer branches below
+          # explicitly defer to this one (their "not (summer_night_window and ...)"
+          # clause) so they don't fight it once it's set.
           "alias" = "Summer: night fixed-cooling — force continuous cool once at window start"
           "conditions" = [
             {
@@ -5460,6 +5673,11 @@ resource "homeassistant_automation" "test_aircon_bedrooms_room_sensor_comfort_ba
           ]
         },
         {
+          # Winter-months only (see the trailing "not (month 3..11)" clause) - during
+          # summer the night air-clean slot is handled by fixed-cooling or the
+          # summer-cool branch's relaxed night gate instead, so this stays out of the
+          # way. Otherwise identical to LivingR/BedroomB: force fan_only at max speed
+          # (fan_mode "5") during the configured air-clean window.
           "alias" = "Night: air cleaning fan only at max speed"
           "conditions" = [
             {
@@ -5506,6 +5724,12 @@ resource "homeassistant_automation" "test_aircon_bedrooms_room_sensor_comfort_ba
           ]
         },
         {
+          # Winter-months only (see the trailing "not (month 3..11)" clause), same
+          # reason as the air-cleaning branch above: summer nights are governed by
+          # fixed-cooling or the relaxed summer-cool gate, not this off-switch. When it
+          # does apply: keep climate off during night_sleep_window unless the room has
+          # already drifted past a summer/winter start-delta trigger (mirrors
+          # LivingR's "Night: sleep keeps climate off..." condition exactly).
           "alias" = "Night: sleep keeps climate off outside air-clean window"
           "conditions" = [
             {
@@ -5534,6 +5758,10 @@ resource "homeassistant_automation" "test_aircon_bedrooms_room_sensor_comfort_ba
           ]
         },
         {
+          # Same pattern as LivingR: while unoccupied during the daytime air-clean
+          # window, push the already-running fan_only unit to max speed (not '2'/'5')
+          # for faster air turnover; the motion branch below restores normal speed the
+          # instant motion returns.
           "alias" = "Daytime no motion: raise fan while climate is already running"
           "conditions" = [
             {
@@ -5562,6 +5790,10 @@ resource "homeassistant_automation" "test_aircon_bedrooms_room_sensor_comfort_ba
           ]
         },
         {
+          # Mirror of the no-motion branch above: motion returns during the daytime
+          # air-clean window, drop fan speed back to normal (fan_only -> '3', or for an
+          # active cooling run -> whatever cooling_fan_mode/boost currently dictates -
+          # handled by the nested branch below).
           "alias" = "Daytime motion: restore fan 3 while climate is already running"
           "conditions" = [
             {
@@ -5573,6 +5805,9 @@ resource "homeassistant_automation" "test_aircon_bedrooms_room_sensor_comfort_ba
             {
               "choose" = [
                 {
+                  # Nested override for the motion-restore case above: if the unit is
+                  # actively cooling (not fan_only), '3' is the wrong target - restore
+                  # cooling_fan_mode (or the return-boost speed if still active) instead.
                   "alias" = "Motion while cooling: restore configured cooling fan"
                   "conditions" = [
                     {
@@ -5616,6 +5851,12 @@ resource "homeassistant_automation" "test_aircon_bedrooms_room_sensor_comfort_ba
           ]
         },
         {
+          # Main summer cooling driver, same shape as LivingR/BedroomB: fires once
+          # effective climbs target + active_cooling_start_delta, sets hvac_mode=cool
+          # and a dynamic_setpoint proportional to how far over target the room is.
+          # Extra clause vs. LivingR/BedroomB: steps aside ("not (summer_night_window
+          # and toggle on and not away)") whenever the fixed-cooling branch above is
+          # already in control of the unit for this window.
           "alias" = "Summer: cool when room is above target comfort band and outside mode is summer"
           "conditions" = [
             {
@@ -5666,6 +5907,11 @@ resource "homeassistant_automation" "test_aircon_bedrooms_room_sensor_comfort_ba
           ]
         },
         {
+          # Room has cooled back to target (or mode left summer) but the unit stays in
+          # 'cool' a bit longer at the configured cooling_fan_mode to let the coil
+          # drain/cool down before the next branch switches it off - same two-stage
+          # shutdown as LivingR/BedroomB. Same fixed-cooling deference clause as the
+          # branch above.
           "alias" = "Summer: coil cool-down after target is reached or outside mode is no longer summer"
           "conditions" = [
             {
@@ -5712,6 +5958,11 @@ resource "homeassistant_automation" "test_aircon_bedrooms_room_sensor_comfort_ba
           ]
         },
         {
+          # Final stage of summer shutdown: once fan_mode has actually settled at
+          # cooling_fan_mode and coil_cooldown_minutes have elapsed since the climate
+          # entity's last_changed timestamp, switch off. Same fixed-cooling deference
+          # clause as the two branches above (fixed-cooling owns the unit's state
+          # during its window, so ordinary shutdown must not fight it).
           "alias" = "Summer: turn off after coil cool-down"
           "conditions" = [
             {
@@ -5758,6 +6009,10 @@ resource "homeassistant_automation" "test_aircon_bedrooms_room_sensor_comfort_ba
           ]
         },
         {
+          # Winter counterpart to the summer-cool branch: fires once effective drops
+          # below target - active_winter_start_delta, sets hvac_mode=heat with a
+          # dynamic_setpoint proportional to the deficit. No fixed-cooling deference
+          # clause here - fixed-cooling only ever engages in summer_night_window.
           "alias" = "Winter: heat when room is below 21.5C and outside mode is winter"
           "conditions" = [
             {
@@ -5808,6 +6063,9 @@ resource "homeassistant_automation" "test_aircon_bedrooms_room_sensor_comfort_ba
           ]
         },
         {
+          # Winter shutdown, single-stage (no coil cool-down needed for heating): once
+          # the unit reads 'heat' and either mode left winter or effective has reached
+          # target, switch off directly.
           "alias" = "Winter: turn off after target is reached or outside mode is no longer winter"
           "conditions" = [
             {
@@ -5861,6 +6119,10 @@ resource "homeassistant_automation" "test_aircon_bedrooms_delayed_program_toggle
 
   action = jsonencode([
     {
+      # Debounce: hold 5s before applying. A dashboard button that toggles the
+      # helper twice within the window (double-tap, or on then immediately off)
+      # settles on whichever state is current when the delay expires, instead of
+      # restarting the comfort-band automation once per keypress.
       "delay" = {
         "seconds" = 5
       }
@@ -5868,6 +6130,9 @@ resource "homeassistant_automation" "test_aircon_bedrooms_delayed_program_toggle
     {
       "choose" = [
         {
+          # Branch: requested state is still "on" after the debounce -> the real
+          # comfort-band automation should be running. Re-enabling an already-on
+          # automation is a no-op, so this is safe to fire on every toggle.
           "alias" = "Apply requested on state"
           "conditions" = [
             {
@@ -5886,6 +6151,10 @@ resource "homeassistant_automation" "test_aircon_bedrooms_delayed_program_toggle
           ]
         },
         {
+          # Branch: requested state is still "off" after the debounce -> stop the
+          # comfort-band automation. stop_actions=false so an in-flight action
+          # (e.g. a delay or a climate service call) is allowed to finish rather
+          # than being cut off mid-command.
           "alias" = "Apply requested off state"
           "conditions" = [
             {
@@ -5960,8 +6229,22 @@ resource "homeassistant_automation" "test_aircon_bedrooms_manual_override" {
 
   action = jsonencode([
     {
+      # Three mutually exclusive branches, selected by trigger.id plus the
+      # override's own on/off and expiry state: (1) the override just expired,
+      # (2) the user cancelled it early, (3) it is on and still within its
+      # window, so its controls should be (re)applied. A trigger that matches
+      # none of the three - e.g. override_started while "until" is still a
+      # stale value from a previous session - does nothing this run and
+      # self-corrects on the next override_expiry_check tick (at most 1 minute
+      # later), which is branch 1.
       "choose" = [
         {
+          # Branch 1: the 1-minute expiry poll fires, the override is on, and
+          # its "until" timestamp has passed (or was never validly set, which
+          # reads the same as "already expired"). Turn the override off and, if
+          # the room's program is supposed to be running, force the comfort
+          # band to recompute immediately (skip_condition=false) rather than
+          # waiting up to 5 minutes for its own poll trigger.
           "alias" = "Expire manual override"
           "conditions" = [
             {
@@ -6011,6 +6294,10 @@ resource "homeassistant_automation" "test_aircon_bedrooms_manual_override" {
           ]
         },
         {
+          # Branch 2: the user flips the override toggle off directly (instead
+          # of letting it expire). Same hand-back to the comfort band as
+          # branch 1, triggered by trigger.id rather than by re-checking the
+          # override state, since by this point input_boolean is already off.
           "alias" = "Manual override cancelled by user"
           "conditions" = [
             {
@@ -6054,6 +6341,11 @@ resource "homeassistant_automation" "test_aircon_bedrooms_manual_override" {
           ]
         },
         {
+          # Branch 3: the override is on and still inside its window - apply
+          # its controls to the unit. Fires on every relevant retrigger
+          # (start, duration change, a control value change, or the 1-minute
+          # poll) so the AC always reflects the current helper values, not
+          # just a snapshot taken at override_started.
           "alias" = "Apply manual override controls"
           "conditions" = [
             {
@@ -6063,6 +6355,12 @@ resource "homeassistant_automation" "test_aircon_bedrooms_manual_override" {
           ]
           "sequence" = [
             {
+              # Sub-branch: only (re)compute the expiry timestamp when the
+              # override just started or its duration helper changed. Do NOT
+              # reset it on override_control_changed or override_expiry_check,
+              # or every temperature/fan/swing tweak - or every 1-minute poll -
+              # would push the expiry back out and the override could never
+              # time out on its own.
               "choose" = [
                 {
                   "conditions" = [
@@ -6086,6 +6384,11 @@ resource "homeassistant_automation" "test_aircon_bedrooms_manual_override" {
               ]
             },
             {
+              # hvac_mode is applied unconditionally on every pass through this
+              # branch (unlike temperature/fan/swing below), because setting
+              # e.g. climate.set_temperature while the mode is "off" is
+              # meaningless on this unit - hvac_mode must land first so the
+              # sub-branch below can gate on its post-update value.
               "service" = "climate.set_hvac_mode"
               "target" = {
                 "entity_id" = "climate.v537_spalniam_2"
@@ -6095,6 +6398,9 @@ resource "homeassistant_automation" "test_aircon_bedrooms_manual_override" {
               }
             },
             {
+              # Sub-branch: only push temperature/fan/swing when the requested
+              # mode is not "off". Sending a target temperature to a unit
+              # that was just told to turn off is a no-op at best.
               "choose" = [
                 {
                   "conditions" = [

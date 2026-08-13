@@ -1,0 +1,68 @@
+{
+  "id": "018",
+  "branch": "main",
+  "name": "ha--code-live-parity",
+  "category": "ha",
+  "description": "main.tf is supposed to be the source of truth for 98 Home Assistant automations, but there is no terraform state for this stack and it has never been applied, so nothing has ever forced the two to agree. This eval asserts, per automation and per field, that the repository and the instance describe the same thing: alias, mode, trigger, condition and action, compared after normalisation rather than by presence or by line count. Presence checks are what let eval 016's double-escape corruption survive review - the templates were all still 'there', they had just been collapsed into one dead line each. Byte-level identity against live is the check with teeth, and it was available over the API the whole time.",
+  "implementation": {
+    "files": [
+      "tools/home-assistant-live/logic_model.js",
+      "tools/home-assistant-live/validate_logic.js"
+    ],
+    "changes": [
+      "Per-field canonical comparison of all 98 managed automations against their live counterparts, keyed through import.tf.",
+      "Mismatches are reported per field rather than per automation, because an alias rename and a rewritten action are very different problems with the same symptom.",
+      "logic_model.js loads both sources of truth once: the repository (main.tf, import.tf, helpers.json) and the live instance (/api/config/automation/config, /api/states, /api/services, /api/template, /api/history).",
+      "main.tf mixes two serialisations of the same field - 102 fields are HCL-escaped JSON on one physical line, 177 are multi-line jsonencode([...]) expressions. A parser that handled only the first found 25 Jinja templates; handling both finds 248. Every comfort band, i.e. all of the actual control logic, uses the second form, so the naive parser reported empty on exactly the automations worth checking.",
+      "jsonencode bodies are not parsed by hand. They are written out as terraform outputs and evaluated by terraform itself, because terraform is the authority on its own syntax and a hand-rolled HCL subset parser is one more thing that can be quietly wrong. The result is cached under a key derived from main.tf's own bytes, so the cache cannot go stale.",
+      "Comparison is done on a canonical form: HA emits trigger/action objects with either the modern (trigger:, action:) or legacy (platform:, service:) key spelling and pluralises the top-level keys, so both sides are normalised before diffing to stop a core upgrade reading as 98 automations of drift."
+    ]
+  },
+  "validation": {
+    "type": "functional_test",
+    "script": "tools/home-assistant-live/validate_logic.js --eval 018",
+    "result": "3/8 checks passed against the live instance. FAILING: C3 - alias mismatches: 39 | C5 - trigger mismatches: 1 -> presence_fused_home_detection | C6 - condition mismatches: 2 -> aircon_hol_fan_high_no_motion, aircon_hol_fan_mid_motion | C7 - action mismatches: 10 -> aircon_living_r_flap_down_v2, aircon_living_r_flap_down_v2_2, vacuum_at_19h_all_away, vacuum_when_all_are_away, test_aircon_livingr_room_sensor_comfort_band | C8 - fully identical resources: 53/98",
+    "checks": [
+      "C1: every resource in main.tf has an import block giving its HA id",
+      "C2: every import id resolves to a live automation config",
+      "C3: alias matches live for every automation",
+      "C4: mode matches live for every automation",
+      "C5: trigger matches live, compared canonically",
+      "C6: condition matches live, compared canonically",
+      "C7: action matches live, compared canonically",
+      "C8: count of automations identical on every field"
+    ],
+    "measured": [
+      "C1 PASS: resources without an import id: 0",
+      "C2 PASS: import ids that do not resolve live: 0",
+      "C3 FAIL: alias mismatches: 39",
+      "C4 PASS: mode mismatches: 0",
+      "C5 FAIL: trigger mismatches: 1 -> presence_fused_home_detection",
+      "C6 FAIL: condition mismatches: 2 -> aircon_hol_fan_high_no_motion, aircon_hol_fan_mid_motion",
+      "C7 FAIL: action mismatches: 10 -> aircon_living_r_flap_down_v2, aircon_living_r_flap_down_v2_2, vacuum_at_19h_all_away, vacuum_when_all_are_away, test_aircon_livingr_room_sensor_comfort_band",
+      "C8 FAIL: fully identical resources: 53/98"
+    ]
+  },
+  "status": "fail",
+  "incidents": [
+    {
+      "what": "The first parser found 25 embedded Jinja templates. The real number is 248. Every comfort band reported an empty trigger, condition and action, so all of the structural checks passed vacuously on precisely the automations that carry the control logic.",
+      "detected_by": "The BedroomS night-cooling assertion passed against a body the model had recorded as zero bytes. A check that cannot fail is not a check.",
+      "fix": "The parser now recognises both serialisations main.tf actually uses, and the jsonencode bodies are evaluated by terraform itself rather than by a hand-written HCL subset parser.",
+      "root_cause": "main.tf was assumed to be uniform because the first fields read were. 102 fields are one-line escaped JSON strings and 177 are multi-line jsonencode expressions, and the split is not random - the long, interesting bodies are all in the second form."
+    },
+    {
+      "what": "Evaluating the jsonencode bodies through 'terraform console' failed with: A managed resource \"output\" \"probe\" has not been declared.",
+      "detected_by": "First run of the terraform evaluation path.",
+      "fix": "Write the expressions as output blocks, then 'terraform apply' and read 'terraform output -json'.",
+      "root_cause": "terraform console resolves bare identifiers as resource references, so it cannot address an output block by name."
+    },
+    {
+      "what": "execFileSync died with 'maxBuffer length exceeded' on terraform apply.",
+      "detected_by": "Crash on the full 98-resource run; a 3-resource smoke test had passed.",
+      "fix": "maxBuffer raised to 512 MB for the terraform invocations.",
+      "root_cause": "terraform apply echoes every output value, and these outputs are entire automation configs - over 1.1 MB against a 1 MB default."
+    }
+  ],
+  "notes": "The failures here are pre-existing drift, not a regression from this eval. Two are worth naming. aircon_hol_fan_high_no_motion and aircon_hol_fan_mid_motion carry the condition [{\"condition\":\"template\",\"value_template\":\"{{ false }}\"}] in main.tf - neutered in code - while live still holds the full original condition and the automations are enabled. A terraform apply would silently disable two working automations. presence_fused_home_detection differs in both trigger and action, with live carrying entities the code does not know about."
+}

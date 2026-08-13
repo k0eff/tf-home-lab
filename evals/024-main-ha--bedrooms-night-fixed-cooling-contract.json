@@ -1,0 +1,58 @@
+{
+  "id": "024",
+  "branch": "main",
+  "name": "ha--bedrooms-night-fixed-cooling-contract",
+  "category": "ha",
+  "description": "The contract the user states for the small bedroom at night: fix the temperature, disengage the program, let the air conditioner hold it by itself. This eval asserts that contract structurally and behaviourally. Structurally, the proportional comfort-band branches must carry the suppression guard 'not (summer_night_window and is_state(...night_fixed_cooling, on) and not away)', and the fixed branch must read its setpoint from the input_number rather than a literal. Behaviourally - which is the half that can actually be wrong without anyone noticing - the AC setpoint must be written once at the 19:30 handover and never again until morning, measured from history over the last four nights.",
+  "implementation": {
+    "files": [
+      "tools/home-assistant-live/logic_model.js",
+      "tools/home-assistant-live/validate_logic.js"
+    ],
+    "changes": [
+      "C5 computes setpoint changes on the UNFILTERED history series and only then labels them as inside or outside the night window. Filtering first makes every window boundary look like a write, which is how an earlier ad-hoc version of this measurement produced four phantom writes all stamped 19:30.",
+      "C6 asserts the handover lands on the helper's current value, so the contract stays asserted against the setting rather than against a number frozen into the check.",
+      "logic_model.js loads both sources of truth once: the repository (main.tf, import.tf, helpers.json) and the live instance (/api/config/automation/config, /api/states, /api/services, /api/template, /api/history).",
+      "main.tf mixes two serialisations of the same field - 102 fields are HCL-escaped JSON on one physical line, 177 are multi-line jsonencode([...]) expressions. A parser that handled only the first found 25 Jinja templates; handling both finds 248. Every comfort band, i.e. all of the actual control logic, uses the second form, so the naive parser reported empty on exactly the automations worth checking.",
+      "jsonencode bodies are not parsed by hand. They are written out as terraform outputs and evaluated by terraform itself, because terraform is the authority on its own syntax and a hand-rolled HCL subset parser is one more thing that can be quietly wrong. The result is cached under a key derived from main.tf's own bytes, so the cache cannot go stale.",
+      "Comparison is done on a canonical form: HA emits trigger/action objects with either the modern (trigger:, action:) or legacy (platform:, service:) key spelling and pluralises the top-level keys, so both sides are normalised before diffing to stop a core upgrade reading as 98 automations of drift."
+    ]
+  },
+  "validation": {
+    "type": "functional_test",
+    "script": "tools/home-assistant-live/validate_logic.js --eval 024",
+    "result": "6/6 checks passed against the live instance. suppression guard present on 3 proportional branches (expected >= 3) fixed branch reads night_fixed_cooling_target rather than a literal both entry triggers defined (19:30 clock + toggle turning on) helpers live: toggle=on, target=24.0 setpoint writes inside the night window excluding the 19:30 handover: 0 19:30 handovers observed: 2, landing on a value other than 24: 0",
+    "checks": [
+      "C1: the suppression guard is present on all three proportional branches",
+      "C2: the fixed branch reads night_fixed_cooling_target, not a hardcoded number",
+      "C3: both entry triggers exist (the 19:30 clock trigger and the toggle turning on mid-window)",
+      "C4: both helpers exist live",
+      "C5: LIVE, 4 nights - zero setpoint writes inside the night window other than the 19:30 handover",
+      "C6: LIVE - every observed handover lands on the helper's value"
+    ],
+    "measured": [
+      "C1 PASS: suppression guard present on 3 proportional branches (expected >= 3)",
+      "C2 PASS: fixed branch reads night_fixed_cooling_target rather than a literal",
+      "C3 PASS: both entry triggers defined (19:30 clock + toggle turning on)",
+      "C4 PASS: helpers live: toggle=on, target=24.0",
+      "C5 PASS: setpoint writes inside the night window excluding the 19:30 handover: 0",
+      "C6 PASS: 19:30 handovers observed: 2, landing on a value other than 24: 0"
+    ]
+  },
+  "status": "pass",
+  "incidents": [
+    {
+      "what": "The first behavioural measurement reported zero automation fires for the entire night window, which would have meant the whole loop was dead.",
+      "detected_by": "The number was too clean. Zero fires across four nights is not a plausible reading for a running system.",
+      "fix": "Removed minimal_response from the history queries.",
+      "root_cause": "minimal_response strips attributes from the history response, and last_triggered is an attribute. The query was asking for exactly the field it had told the API to omit."
+    },
+    {
+      "what": "The first measurement reported four setpoint writes inside the night window, all stamped 19:30 - i.e. it appeared to contradict the contract.",
+      "detected_by": "All four were at the same clock time on four different nights, which is the signature of a window artefact rather than of a control fault.",
+      "fix": "Setpoint changes are computed on the unfiltered series and only labelled by window afterwards.",
+      "root_cause": "Filtering the series to the window first makes the first sample inside the window look like a change from nothing. Every window boundary becomes a false positive."
+    }
+  ],
+  "notes": "Passes. The contract holds. What this eval deliberately does NOT assert is that the room reaches the fixed target: measured over four nights the AC's own sensor sits a median 1.0 C BELOW its own setpoint while still calling for cool, and the room lands a median 0.9 C low, bottoming at 22.8 C against a 24.0 C target. That is the unit's own thermostat undershooting, not the program failing to disengage, and it is a separate question from the one this eval answers."
+}

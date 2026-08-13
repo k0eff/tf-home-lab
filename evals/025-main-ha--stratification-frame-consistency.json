@@ -1,0 +1,45 @@
+{
+  "id": "025",
+  "branch": "main",
+  "name": "ha--stratification-frame-consistency",
+  "category": "ha",
+  "description": "Eval 015 normalised BedroomB's control reference frame: the loop reasons about the temperature at the occupied level rather than about whatever the air conditioner's own probe happens to read, using a learned stratification offset. The correction was applied to one room. This eval asserts all three rooms are on the same frame, and fails for the two that are not. It exists because a per-room fix creates exactly the failure mode that is hardest to see - each room is internally consistent, the numbers all look plausible, and only a comparison across rooms shows that the same setpoint means two different things in two of them.",
+  "implementation": {
+    "files": [
+      "tools/home-assistant-live/logic_model.js",
+      "tools/home-assistant-live/validate_logic.js"
+    ],
+    "changes": [
+      "Offset helper names are matched by pattern per room prefix rather than guessed. The room that HAS the fix calls its helper bedroomb_ac_stratification_offset; a hardcoded guess at bedroomb_stratification_offset reported the fixed room as unfixed, which would have turned this eval into noise.",
+      "logic_model.js loads both sources of truth once: the repository (main.tf, import.tf, helpers.json) and the live instance (/api/config/automation/config, /api/states, /api/services, /api/template, /api/history).",
+      "main.tf mixes two serialisations of the same field - 102 fields are HCL-escaped JSON on one physical line, 177 are multi-line jsonencode([...]) expressions. A parser that handled only the first found 25 Jinja templates; handling both finds 248. Every comfort band, i.e. all of the actual control logic, uses the second form, so the naive parser reported empty on exactly the automations worth checking.",
+      "jsonencode bodies are not parsed by hand. They are written out as terraform outputs and evaluated by terraform itself, because terraform is the authority on its own syntax and a hand-rolled HCL subset parser is one more thing that can be quietly wrong. The result is cached under a key derived from main.tf's own bytes, so the cache cannot go stale.",
+      "Comparison is done on a canonical form: HA emits trigger/action objects with either the modern (trigger:, action:) or legacy (platform:, service:) key spelling and pluralises the top-level keys, so both sides are normalised before diffing to stop a core upgrade reading as 98 automations of drift."
+    ]
+  },
+  "validation": {
+    "type": "functional_test",
+    "script": "tools/home-assistant-live/validate_logic.js --eval 025",
+    "result": "1/3 checks passed against the live instance. FAILING: C-bedrooms - bedrooms: ac_temp_occupied=false, offset helper referenced=false, helper live=none | C-livingr - livingr: ac_temp_occupied=false, offset helper referenced=false, helper live=none",
+    "checks": [
+      "C-bedroomb: BedroomB controls on ac_temp_occupied with a live stratification offset helper",
+      "C-bedrooms: BedroomS controls on ac_temp_occupied with a live stratification offset helper",
+      "C-livingr: LivingR controls on ac_temp_occupied with a live stratification offset helper"
+    ],
+    "measured": [
+      "C-bedroomb PASS: bedroomb: ac_temp_occupied=true, offset helper referenced=true, helper live=input_number.bedroomb_ac_stratification_offset+input_number.bedroomb_ceiling_sensor_stratification_offset",
+      "C-bedrooms FAIL: bedrooms: ac_temp_occupied=false, offset helper referenced=false, helper live=none",
+      "C-livingr FAIL: livingr: ac_temp_occupied=false, offset helper referenced=false, helper live=none"
+    ]
+  },
+  "status": "fail",
+  "incidents": [
+    {
+      "what": "The first run failed all three rooms, including BedroomB - the one room that demonstrably has the fix from eval 015.",
+      "detected_by": "A room known to be correct failing. A check whose result contradicts a verified fact is wrong until proven otherwise.",
+      "fix": "Offset helpers are matched by pattern against the room prefix instead of by a guessed exact name.",
+      "root_cause": "The helper name was guessed as bedroomb_stratification_offset; the real helpers are bedroomb_ac_stratification_offset and bedroomb_ceiling_sensor_stratification_offset. Guessing an identifier that can be read from helpers.json converts a real check into noise."
+    }
+  ],
+  "notes": "Fails 2 of 3, as expected and by design. BedroomS and LivingR still control on the raw AC frame; this was left out of scope deliberately under the vertical-slice rule (finish one room end to end before starting the next) and this eval is the written-down form of that debt rather than a new discovery."
+}

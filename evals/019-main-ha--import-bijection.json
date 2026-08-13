@@ -1,0 +1,44 @@
+{
+  "id": "019",
+  "branch": "main",
+  "name": "ha--import-bijection",
+  "category": "ha",
+  "description": "import.tf is the only bridge between a terraform resource name and the Home Assistant automation id it manages. If that mapping is not a clean bijection then terraform is either pointed at the wrong automation or blind to one. This eval asserts it in both directions: every resource has exactly one id, no id is claimed twice, and - the direction that actually bites - every enabled automation on the instance is claimed by some resource. An automation that exists live and in nobody's import block is invisible to the repository: it cannot be reviewed, cannot be restored, and will be deleted by nothing and recreated by nothing.",
+  "implementation": {
+    "files": [
+      "tools/home-assistant-live/logic_model.js",
+      "tools/home-assistant-live/validate_logic.js"
+    ],
+    "changes": [
+      "Forward direction: resource -> import block -> live config, asserting existence and uniqueness at each hop.",
+      "Reverse direction: every live automation entity carrying an id attribute is checked against the set of managed ids, and the enabled ones are reported separately from the disabled ones because only the first can affect behaviour.",
+      "logic_model.js loads both sources of truth once: the repository (main.tf, import.tf, helpers.json) and the live instance (/api/config/automation/config, /api/states, /api/services, /api/template, /api/history).",
+      "main.tf mixes two serialisations of the same field - 102 fields are HCL-escaped JSON on one physical line, 177 are multi-line jsonencode([...]) expressions. A parser that handled only the first found 25 Jinja templates; handling both finds 248. Every comfort band, i.e. all of the actual control logic, uses the second form, so the naive parser reported empty on exactly the automations worth checking.",
+      "jsonencode bodies are not parsed by hand. They are written out as terraform outputs and evaluated by terraform itself, because terraform is the authority on its own syntax and a hand-rolled HCL subset parser is one more thing that can be quietly wrong. The result is cached under a key derived from main.tf's own bytes, so the cache cannot go stale.",
+      "Comparison is done on a canonical form: HA emits trigger/action objects with either the modern (trigger:, action:) or legacy (platform:, service:) key spelling and pluralises the top-level keys, so both sides are normalised before diffing to stop a core upgrade reading as 98 automations of drift."
+    ]
+  },
+  "validation": {
+    "type": "functional_test",
+    "script": "tools/home-assistant-live/validate_logic.js --eval 019",
+    "result": "4/6 checks passed against the live instance. FAILING: C5 - live automations absent from import.tf: 1 (1 of them enabled) | C6 - ENABLED live automations not under terraform: 1 -> [TEST] AirCon - BedroomS - program state reconciliation",
+    "checks": [
+      "C1: import block count equals resource count",
+      "C2: no duplicate resource names in main.tf",
+      "C3: no duplicate ids in import.tf",
+      "C4: no import block points at a resource that does not exist",
+      "C5: no live automation is absent from import.tf",
+      "C6: no ENABLED live automation is absent from import.tf"
+    ],
+    "measured": [
+      "C1 PASS: import blocks 98 vs resources 98",
+      "C2 PASS: duplicate resource names: 0",
+      "C3 PASS: duplicate import ids: 0",
+      "C4 PASS: import blocks pointing at no resource: 0",
+      "C5 FAIL: live automations absent from import.tf: 1 (1 of them enabled)",
+      "C6 FAIL: ENABLED live automations not under terraform: 1 -> [TEST] AirCon - BedroomS - program state reconciliation"
+    ]
+  },
+  "status": "fail",
+  "notes": "The single unmanaged automation this finds, '[TEST] AirCon - BedroomS - program state reconciliation', was already known and had been flagged but never written down as a check. It is enabled and it commands the BedroomS unit's power state."
+}

@@ -1,0 +1,56 @@
+{
+  "id": "026",
+  "branch": "main",
+  "name": "ha--setpoint-clamp-bounds",
+  "category": "ha",
+  "description": "dynamic_setpoint is computed from a sensor reading and written straight to the air conditioner. Without a clamp, one bad reading becomes an out-of-range command; a unit that rejects the whole service call then keeps its previous setpoint while the automation's trace shows success, leaving the room uncontrolled and the log clean. This eval asserts every dynamic_setpoint assignment in every room clamps into [16, 31], and separately asserts that range still matches what the hardware advertises through min_temp/max_temp - a clamp that no longer matches the device is not a clamp.",
+  "implementation": {
+    "files": [
+      "tools/home-assistant-live/logic_model.js",
+      "tools/home-assistant-live/validate_logic.js"
+    ],
+    "changes": [
+      "The climate entity for each room is read out of the automation rather than hardcoded in the check. An earlier version hardcoded climate.v357_hol_2 for LivingR, whose unit is actually climate.hol_2, and reported 'entity absent live' - which reads exactly like a finding and is not one.",
+      "logic_model.js loads both sources of truth once: the repository (main.tf, import.tf, helpers.json) and the live instance (/api/config/automation/config, /api/states, /api/services, /api/template, /api/history).",
+      "main.tf mixes two serialisations of the same field - 102 fields are HCL-escaped JSON on one physical line, 177 are multi-line jsonencode([...]) expressions. A parser that handled only the first found 25 Jinja templates; handling both finds 248. Every comfort band, i.e. all of the actual control logic, uses the second form, so the naive parser reported empty on exactly the automations worth checking.",
+      "jsonencode bodies are not parsed by hand. They are written out as terraform outputs and evaluated by terraform itself, because terraform is the authority on its own syntax and a hand-rolled HCL subset parser is one more thing that can be quietly wrong. The result is cached under a key derived from main.tf's own bytes, so the cache cannot go stale.",
+      "Comparison is done on a canonical form: HA emits trigger/action objects with either the modern (trigger:, action:) or legacy (platform:, service:) key spelling and pluralises the top-level keys, so both sides are normalised before diffing to stop a core upgrade reading as 98 automations of drift."
+    ]
+  },
+  "validation": {
+    "type": "functional_test",
+    "script": "tools/home-assistant-live/validate_logic.js --eval 026",
+    "result": "6/6 checks passed against the live instance. bedroomb: dynamic_setpoint assignments=30, clamped to [16,31]=30 bedrooms: dynamic_setpoint assignments=31, clamped to [16,31]=31 livingr: dynamic_setpoint assignments=30, clamped to [16,31]=30 climate.v357_spalniag_2 advertises min_temp=10 max_temp=31, clamp 16..31 fits inside it climate.v537_spalniam_2 advertises min_temp=16 max_temp=31, clamp 16..31 fits inside it climate.hol_2 advertises min_temp=10 max_temp=31, clamp 16..31 fits inside it",
+    "checks": [
+      "C-bedroomb: every BedroomB dynamic_setpoint assignment is clamped to [16,31]",
+      "C-bedrooms: every BedroomS dynamic_setpoint assignment is clamped to [16,31]",
+      "C-livingr: every LivingR dynamic_setpoint assignment is clamped to [16,31]",
+      "C-range-bedroomb: the clamp fits inside what the BedroomB unit advertises it accepts",
+      "C-range-bedrooms: the clamp fits inside what the BedroomS unit advertises it accepts",
+      "C-range-livingr: the clamp fits inside what the LivingR unit advertises it accepts"
+    ],
+    "measured": [
+      "C-bedroomb PASS: bedroomb: dynamic_setpoint assignments=30, clamped to [16,31]=30",
+      "C-bedrooms PASS: bedrooms: dynamic_setpoint assignments=31, clamped to [16,31]=31",
+      "C-livingr PASS: livingr: dynamic_setpoint assignments=30, clamped to [16,31]=30",
+      "C-range-bedroomb PASS: climate.v357_spalniag_2 advertises min_temp=10 max_temp=31, clamp 16..31 fits inside it",
+      "C-range-bedrooms PASS: climate.v537_spalniam_2 advertises min_temp=16 max_temp=31, clamp 16..31 fits inside it",
+      "C-range-livingr PASS: climate.hol_2 advertises min_temp=10 max_temp=31, clamp 16..31 fits inside it"
+    ]
+  },
+  "status": "pass",
+  "incidents": [
+    {
+      "what": "C-range-livingr reported the climate entity as absent from the live instance.",
+      "detected_by": "The LivingR unit is plainly working, so 'absent' could not be true.",
+      "fix": "climateOf() derives each room's climate entity from the automation's own text, filtering out service names read from /api/services. The entity id now cannot drift out of sync with the check.",
+      "root_cause": "climate.v357_hol_2 was hardcoded; the actual entity is climate.hol_2. A hardcoded id that drifts does not report 'the check is stale' - it reports 'the entity is missing', which is indistinguishable from a real finding."
+    },
+    {
+      "what": "C-range asserted containment in the wrong direction - it required the unit's advertised range to fit inside the clamp. It passed 6/6 on one run and failed 4/6 on the next with nothing changed in the repository between them.",
+      "detected_by": "The instability itself. A structural check that changes verdict between two runs of the same code is measuring something other than what it claims to.",
+      "fix": "The assertion is now 16 >= min_temp && 31 <= max_temp: every value the clamp can emit must be one the unit accepts. A unit accepting a wider range is not a defect.",
+      "root_cause": "min_temp moves with hvac_mode on these units - 16 while cooling, 10 while off or heating - so the inverted assertion was reading the air conditioner's current mode and reporting it as a code defect. Containment was also simply backwards: the clamp is deliberately narrower than the hardware, because nobody wants the 10 C the hardware would allow."
+    }
+  ]
+}

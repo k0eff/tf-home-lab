@@ -1,0 +1,45 @@
+{
+  "id": "023",
+  "branch": "main",
+  "name": "ha--trigger-id-integrity",
+  "category": "ha",
+  "description": "The comfort bands select branches by trigger.id. A branch whose condition tests for an id that no trigger defines can never run, and it looks completely normal in the config: the branch is present, its condition is valid Jinja, it simply never matches. This eval extracts the trigger ids each automation defines and the ids its branches test for, and asserts the second is a subset of the first. It also asserts ids are unique within an automation, because a repeated id makes branch selection ambiguous and untraceable.",
+  "implementation": {
+    "files": [
+      "tools/home-assistant-live/logic_model.js",
+      "tools/home-assistant-live/validate_logic.js"
+    ],
+    "changes": [
+      "Both reference forms are recognised: trigger.id == 'x' / != 'x', and trigger.id in ['x', 'y'].",
+      "Triggers that define an id no branch references are NOT flagged. Re-evaluating the whole decision on any input change is the intended design of these loops, and the first version of this check reported 13 such triggers as defects when they are the architecture.",
+      "logic_model.js loads both sources of truth once: the repository (main.tf, import.tf, helpers.json) and the live instance (/api/config/automation/config, /api/states, /api/services, /api/template, /api/history).",
+      "main.tf mixes two serialisations of the same field - 102 fields are HCL-escaped JSON on one physical line, 177 are multi-line jsonencode([...]) expressions. A parser that handled only the first found 25 Jinja templates; handling both finds 248. Every comfort band, i.e. all of the actual control logic, uses the second form, so the naive parser reported empty on exactly the automations worth checking.",
+      "jsonencode bodies are not parsed by hand. They are written out as terraform outputs and evaluated by terraform itself, because terraform is the authority on its own syntax and a hand-rolled HCL subset parser is one more thing that can be quietly wrong. The result is cached under a key derived from main.tf's own bytes, so the cache cannot go stale.",
+      "Comparison is done on a canonical form: HA emits trigger/action objects with either the modern (trigger:, action:) or legacy (platform:, service:) key spelling and pluralises the top-level keys, so both sides are normalised before diffing to stop a core upgrade reading as 98 automations of drift."
+    ]
+  },
+  "validation": {
+    "type": "functional_test",
+    "script": "tools/home-assistant-live/validate_logic.js --eval 023",
+    "result": "3/3 checks passed against the live instance. trigger.id references found: 21 across 179 triggers branches keyed on an undefined trigger id: 0 duplicate trigger ids within one automation: 0",
+    "checks": [
+      "C1: trigger.id references are found at all (the check is not vacuous)",
+      "C2: no branch is keyed on a trigger id that is never defined",
+      "C3: no automation defines the same trigger id twice"
+    ],
+    "measured": [
+      "C1 PASS: trigger.id references found: 21 across 179 triggers",
+      "C2 PASS: branches keyed on an undefined trigger id: 0",
+      "C3 PASS: duplicate trigger ids within one automation: 0"
+    ]
+  },
+  "status": "pass",
+  "incidents": [
+    {
+      "what": "The original C3 asserted that every defined trigger id is referenced by some branch, and reported 13 violations as findings.",
+      "detected_by": "Reading the comfort bands. The unreferenced triggers are deliberate: any input change re-runs the whole decision, and only some triggers additionally select a specific branch.",
+      "fix": "Replaced with a duplicate-trigger-id check, which is a genuine invariant of this design rather than an assumption imported from a different one.",
+      "root_cause": "The check encoded an architecture the code does not use, so its 13 findings described the checker's expectations rather than the system."
+    }
+  ]
+}

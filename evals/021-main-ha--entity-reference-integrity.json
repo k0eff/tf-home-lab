@@ -1,0 +1,48 @@
+{
+  "id": "021",
+  "branch": "main",
+  "name": "ha--entity-reference-integrity",
+  "category": "ha",
+  "description": "A Jinja template that reads a non-existent entity does not raise. states('sensor.gone') returns the string 'unknown', the surrounding float(none) turns it into none, the guard clause treats it as a missing sensor and the control loop quietly falls back. The room still gets controlled, just on a different input than the author intended, and nothing anywhere reports a problem. This eval resolves every entity id referenced by the automations against the live state machine. It is scoped to ENABLED automations, because a disabled [OLD] automation pointing at a decommissioned entity is dead code rather than a live defect, and folding the two together buries the second inside the first.",
+  "implementation": {
+    "files": [
+      "tools/home-assistant-live/logic_model.js",
+      "tools/home-assistant-live/validate_logic.js"
+    ],
+    "changes": [
+      "Real service names are read from /api/services rather than hardcoded, so climate.set_temperature and input_number.set_value are not mistaken for missing entities - they are indistinguishable from entity ids by shape.",
+      "Enabled and disabled references are collected separately, and the entities that matter most (the climate units under command, the temperature sensors feeding the loops) are asserted individually rather than being averaged into one count.",
+      "logic_model.js loads both sources of truth once: the repository (main.tf, import.tf, helpers.json) and the live instance (/api/config/automation/config, /api/states, /api/services, /api/template, /api/history).",
+      "main.tf mixes two serialisations of the same field - 102 fields are HCL-escaped JSON on one physical line, 177 are multi-line jsonencode([...]) expressions. A parser that handled only the first found 25 Jinja templates; handling both finds 248. Every comfort band, i.e. all of the actual control logic, uses the second form, so the naive parser reported empty on exactly the automations worth checking.",
+      "jsonencode bodies are not parsed by hand. They are written out as terraform outputs and evaluated by terraform itself, because terraform is the authority on its own syntax and a hand-rolled HCL subset parser is one more thing that can be quietly wrong. The result is cached under a key derived from main.tf's own bytes, so the cache cannot go stale.",
+      "Comparison is done on a canonical form: HA emits trigger/action objects with either the modern (trigger:, action:) or legacy (platform:, service:) key spelling and pluralises the top-level keys, so both sides are normalised before diffing to stop a core upgrade reading as 98 automations of drift."
+    ]
+  },
+  "validation": {
+    "type": "functional_test",
+    "script": "tools/home-assistant-live/validate_logic.js --eval 021",
+    "result": "2/4 checks passed against the live instance. FAILING: C1 - entities referenced by ENABLED automations: 206, missing live: 2 -> sensor.iphone_ssid, sensor.iphone_bssid | C2 - entities referenced only by DISABLED automations and absent live: 3 -> climate.v357_spalniag, climate.v537_spalniam, climate.hol",
+    "checks": [
+      "C1: every entity referenced by an ENABLED automation exists live",
+      "C2: no entity referenced only by disabled automations is absent live (dead-code detector)",
+      "C3: every climate unit commanded by an enabled automation is alive",
+      "C4: every temperature sensor feeding an enabled loop is available"
+    ],
+    "measured": [
+      "C1 FAIL: entities referenced by ENABLED automations: 206, missing live: 2 -> sensor.iphone_ssid, sensor.iphone_bssid",
+      "C2 FAIL: entities referenced only by DISABLED automations and absent live: 3 -> climate.v357_spalniag, climate.v537_spalniam, climate.hol",
+      "C3 PASS: climate entities commanded by enabled automations: 3, dead: 0",
+      "C4 PASS: temperature sensors feeding enabled loops: 6, unavailable/unknown: 0"
+    ]
+  },
+  "status": "fail",
+  "incidents": [
+    {
+      "what": "The first version resolved references from all 98 automations together and reported one undifferentiated list of missing entities, in which the two live findings were buried among the dead ones.",
+      "detected_by": "Every entity in the list turned out to be referenced only by a disabled [OLD] automation - except two, which were the ones that mattered.",
+      "fix": "Split into C1 (enabled automations, a live defect) and C2 (disabled only, dead code), and added C3/C4 asserting the control loops' own inputs and outputs individually.",
+      "root_cause": "Aggregating findings of different severity into one count destroys the information needed to act on any of them."
+    }
+  ],
+  "notes": "C3 and C4 pass - the control loops' actual inputs and outputs are all healthy. The C1 failures are in the presence chain, and the C2 failures are the pre-Miot climate entities left behind in disabled [OLD] automations."
+}

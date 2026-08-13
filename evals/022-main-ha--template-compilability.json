@@ -1,0 +1,52 @@
+{
+  "id": "022",
+  "branch": "main",
+  "name": "ha--template-compilability",
+  "category": "ha",
+  "description": "A Jinja error inside a condition template does not surface as an error. Home Assistant logs it and treats the condition as false, which disables that branch permanently and silently - the automation still runs, still reports 'on', still shows a recent last_triggered, and one of its decisions has simply stopped being reachable. This eval renders every template embedded in every automation against the live instance and requires HTTP 200, then additionally requires that top-level condition templates evaluate to a boolean rather than to a string that merely looks like one.",
+  "implementation": {
+    "files": [
+      "tools/home-assistant-live/logic_model.js",
+      "tools/home-assistant-live/validate_logic.js"
+    ],
+    "changes": [
+      "All 248 embedded templates are extracted by walking the parsed trigger/condition/action structures, so a template nested inside a choose branch is covered rather than only the top-level ones.",
+      "Templates that read trigger./this./repeat./wait. cannot render standalone because /api/template supplies no automation run context. They are reported as skipped rather than counted as failures: the first version of this check reported 23 failures that were all artefacts of how the check itself ran.",
+      "/api/template returns plain text, not JSON, so it is called over raw HTTP - the shared rest() helper parses the body and throws on the first non-JSON byte.",
+      "logic_model.js loads both sources of truth once: the repository (main.tf, import.tf, helpers.json) and the live instance (/api/config/automation/config, /api/states, /api/services, /api/template, /api/history).",
+      "main.tf mixes two serialisations of the same field - 102 fields are HCL-escaped JSON on one physical line, 177 are multi-line jsonencode([...]) expressions. A parser that handled only the first found 25 Jinja templates; handling both finds 248. Every comfort band, i.e. all of the actual control logic, uses the second form, so the naive parser reported empty on exactly the automations worth checking.",
+      "jsonencode bodies are not parsed by hand. They are written out as terraform outputs and evaluated by terraform itself, because terraform is the authority on its own syntax and a hand-rolled HCL subset parser is one more thing that can be quietly wrong. The result is cached under a key derived from main.tf's own bytes, so the cache cannot go stale.",
+      "Comparison is done on a canonical form: HA emits trigger/action objects with either the modern (trigger:, action:) or legacy (platform:, service:) key spelling and pluralises the top-level keys, so both sides are normalised before diffing to stop a core upgrade reading as 98 automations of drift."
+    ]
+  },
+  "validation": {
+    "type": "functional_test",
+    "script": "tools/home-assistant-live/validate_logic.js --eval 022",
+    "result": "3/3 checks passed against the live instance. templates discovered: 248, renderable standalone: 221, needing run context: 27 templates failing to render: 0/221 top-level condition templates not rendering to a boolean: 0/52",
+    "checks": [
+      "C1: templates discovered, and how many need run context",
+      "C2: every standalone-renderable template returns HTTP 200",
+      "C3: every top-level condition template renders to a boolean"
+    ],
+    "measured": [
+      "C1 PASS: templates discovered: 248, renderable standalone: 221, needing run context: 27",
+      "C2 PASS: templates failing to render: 0/221",
+      "C3 PASS: top-level condition templates not rendering to a boolean: 0/52"
+    ]
+  },
+  "status": "pass",
+  "incidents": [
+    {
+      "what": "C2 reported 23 failing templates, all with the same error: 'trigger' is undefined.",
+      "detected_by": "The uniformity of the error. 23 distinct templates do not break in one identical way unless the harness is what is broken.",
+      "fix": "Templates reading trigger./this./repeat./wait. are classified as needing run context and reported as skipped, with the count stated so the exemption cannot hide anything. 0 of 221 renderable templates now fail.",
+      "root_cause": "/api/template renders in an empty context. Those variables exist only inside an automation run, so the failures were a property of how the check called the API and said nothing about the templates."
+    },
+    {
+      "what": "C3 failed one condition template that renders correctly.",
+      "detected_by": "Inspecting the rendered value: it was 'true', and the check compared against the strings 'True' and 'False'.",
+      "fix": "Boolean rendering is compared case-insensitively.",
+      "root_cause": "Jinja's output casing depends on how the expression was written; the check encoded one of the two spellings as if it were the only one."
+    }
+  ]
+}

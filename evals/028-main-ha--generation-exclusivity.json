@@ -1,0 +1,57 @@
+{
+  "id": "028",
+  "branch": "main",
+  "name": "ha--generation-exclusivity",
+  "category": "ha",
+  "description": "Three generations of climate automations coexist on this instance - [OLD], [V2] and [TEST]. If two enabled generations can command the same air conditioner then they fight, and the winner is whichever ran last. This eval asserts exclusivity per climate unit, and then measures whether the hazard is currently firing, because a structural possibility and a live fault deserve different responses and collapsing them into one verdict serves neither.",
+  "implementation": {
+    "files": [
+      "tools/home-assistant-live/logic_model.js",
+      "tools/home-assistant-live/validate_logic.js"
+    ],
+    "changes": [
+      "Generation is classified from the LIVE alias, not from main.tf. 39 automations were renamed live with an [OLD] prefix that the repository never received, so a check reading main.tf sees zero [OLD] automations in existence and cannot report one as enabled no matter what is true. Its 'pass' was structurally uninformative, which is worse than a wrong number because nothing about it looks wrong.",
+      "C4 asserts the repo and the instance agree on generation, which is the precondition that makes any repo-side generation judgement sound.",
+      "C5 measures the hazard rather than assuming it: two different setpoints written to the same unit within 30 seconds is the signature of two writers fighting, scanned across 7 days of history.",
+      "logic_model.js loads both sources of truth once: the repository (main.tf, import.tf, helpers.json) and the live instance (/api/config/automation/config, /api/states, /api/services, /api/template, /api/history).",
+      "main.tf mixes two serialisations of the same field - 102 fields are HCL-escaped JSON on one physical line, 177 are multi-line jsonencode([...]) expressions. A parser that handled only the first found 25 Jinja templates; handling both finds 248. Every comfort band, i.e. all of the actual control logic, uses the second form, so the naive parser reported empty on exactly the automations worth checking.",
+      "jsonencode bodies are not parsed by hand. They are written out as terraform outputs and evaluated by terraform itself, because terraform is the authority on its own syntax and a hand-rolled HCL subset parser is one more thing that can be quietly wrong. The result is cached under a key derived from main.tf's own bytes, so the cache cannot go stale.",
+      "Comparison is done on a canonical form: HA emits trigger/action objects with either the modern (trigger:, action:) or legacy (platform:, service:) key spelling and pluralises the top-level keys, so both sides are normalised before diffing to stop a core upgrade reading as 98 automations of drift."
+    ]
+  },
+  "validation": {
+    "type": "functional_test",
+    "script": "tools/home-assistant-live/validate_logic.js --eval 028",
+    "result": "3/5 checks passed against the live instance. FAILING: C2 - entities commanded by more than one enabled generation: 3 -> climate.hol_2 {TEST:2,V2:5} | climate.v357_spalniag_2 {TEST:2,V2:2} | climate.v537_spalniam_2 {V2:2,TEST:2} | C4 - automations whose generation differs between main.tf and live: 39 -> e.g. aircon_bedroomb_flap_door_sensor code='PLAIN' live='OLD', aircon_bedrooms_fan_high_no_motion code='PLAIN' live='OLD', aircon_bedrooms_fan_mid_motion code='PLAIN' live='OLD'",
+    "checks": [
+      "C1: climate units under active command are found (the check is not vacuous)",
+      "C2: no climate unit is commanded by more than one enabled generation",
+      "C3: no [OLD] generation automation is still enabled",
+      "C4: repo and live agree on which generation each automation belongs to",
+      "C5: LIVE, 7 days - no observed override pairs on any unit"
+    ],
+    "measured": [
+      "C1 PASS: climate entities under active command: 3",
+      "C2 FAIL: entities commanded by more than one enabled generation: 3 -> climate.hol_2 {TEST:2,V2:5} | climate.v357_spalniag_2 {TEST:2,V2:2} | climate.v537_spalniam_2 {V2:2,TEST:2}",
+      "C3 PASS: [OLD] generation automations still enabled: 0",
+      "C4 FAIL: automations whose generation differs between main.tf and live: 39 -> e.g. aircon_bedroomb_flap_door_sensor code='PLAIN' live='OLD', aircon_bedrooms_fan_high_no_motion code='PLAIN' live='OLD', aircon_bedrooms_fan_mid_motion code='PLAIN' live='OLD'",
+      "C5 PASS: override pairs observed in 7 days (same unit, two values within 30s): 0/409 setpoint changes"
+    ]
+  },
+  "status": "fail",
+  "incidents": [
+    {
+      "what": "C3 reported '[OLD] generation automations still enabled: 0' and passed while classifying generation from main.tf, which contains no [OLD] prefix on any of the 39 automations that carry one live. The reported number is in fact correct - all 39 are disabled, verified against /api/states - but the check would have reported 0 just the same had every one of them been enabled. It could not fail.",
+      "detected_by": "Cross-checking a known [OLD] automation's alias against the live instance while investigating an unrelated mismatch in eval 018.",
+      "fix": "gen() classifies from the LIVE alias via liveMeta(), and a new C4 asserts that main.tf and the instance agree on generation - so the divergence that made the old check blind is now itself a failing check rather than an invisible precondition.",
+      "root_cause": "The check consulted the only source that could not know the answer. This is the most instructive bug in the batch precisely because its output was right: a passing check whose result does not depend on the fact it claims to measure is indistinguishable from a working one, and no amount of re-reading its verdict would have revealed it."
+    },
+    {
+      "what": "Logbook attribution returned 76518 events - the entire house - instead of one entity's history.",
+      "detected_by": "The event count was three orders of magnitude too large.",
+      "fix": "The correct parameter is entity=, not entity_id=. The tool now probes both and falls back to client-side filtering, verifying that the response is actually filtered rather than trusting that it was.",
+      "root_cause": "An unrecognised query parameter is ignored rather than rejected, so the wrong name returns a successful, complete, useless response."
+    }
+  ],
+  "notes": "C2 fails structurally and C5 passes behaviourally, and both facts matter. Each room has a [TEST] comfort band plus [V2] whole-house setters ('[V2] AirCon enter home set temp' and '[V2] AirCon leave home set temp') that call climate.set_temperature on all three units. Logbook attribution over 7 days shows the [TEST] comfort bands doing essentially all of the writing (1248/1255, 942/1000, 164/168) and the two V2 setters last fired 2026-08-04 and 2026-07-16. So: a real latent hazard on arrival/departure transitions, not a currently-firing fault, and specifically NOT the cause of the recent warm rooms."
+}

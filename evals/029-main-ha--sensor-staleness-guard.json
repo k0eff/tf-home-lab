@@ -1,0 +1,55 @@
+{
+  "id": "029",
+  "branch": "main",
+  "name": "ha--sensor-staleness-guard",
+  "category": "ha",
+  "description": "Eval 004's guard, asserted as a standing invariant. A battery temperature sensor that stops reporting does not go unavailable - it keeps its last value indefinitely, so the control loop keeps regulating against a number frozen hours or days ago and every reading looks perfectly normal. This eval requires each room's comfort band to still consult its staleness threshold, its last-moved timestamp and its battery floor, requires those helpers to exist live, and then checks that the sensors the enabled loops actually read are in fact within their own configured threshold right now.",
+  "implementation": {
+    "files": [
+      "tools/home-assistant-live/logic_model.js",
+      "tools/home-assistant-live/validate_logic.js"
+    ],
+    "changes": [
+      "Freshness is asserted only for sensors the enabled comfort bands actually read. The house has other Xiaomi sensors lying around, one of them 483 hours stale; an earlier version swept all 15 and reported 5 as findings, none of which any control loop consults.",
+      "The threshold is per room (bedroomb/bedrooms/livingr_room_sensor_stale_hours), not shared. An earlier version asserted a single shared input_number.room_sensor_stale_hours, which does not exist, and failed for that reason rather than for a real one.",
+      "logic_model.js loads both sources of truth once: the repository (main.tf, import.tf, helpers.json) and the live instance (/api/config/automation/config, /api/states, /api/services, /api/template, /api/history).",
+      "main.tf mixes two serialisations of the same field - 102 fields are HCL-escaped JSON on one physical line, 177 are multi-line jsonencode([...]) expressions. A parser that handled only the first found 25 Jinja templates; handling both finds 248. Every comfort band, i.e. all of the actual control logic, uses the second form, so the naive parser reported empty on exactly the automations worth checking.",
+      "jsonencode bodies are not parsed by hand. They are written out as terraform outputs and evaluated by terraform itself, because terraform is the authority on its own syntax and a hand-rolled HCL subset parser is one more thing that can be quietly wrong. The result is cached under a key derived from main.tf's own bytes, so the cache cannot go stale.",
+      "Comparison is done on a canonical form: HA emits trigger/action objects with either the modern (trigger:, action:) or legacy (platform:, service:) key spelling and pluralises the top-level keys, so both sides are normalised before diffing to stop a core upgrade reading as 98 automations of drift."
+    ]
+  },
+  "validation": {
+    "type": "functional_test",
+    "script": "tools/home-assistant-live/validate_logic.js --eval 029",
+    "result": "5/5 checks passed against the live instance. bedroomb: stale_hours=true, last_moved=true, battery guard=true bedrooms: stale_hours=true, last_moved=true, battery guard=true livingr: stale_hours=true, last_moved=true, battery guard=true per-room staleness threshold helpers live: 3/3 sensors read by the enabled comfort bands that are past their own threshold: 0/10 (stalest sensor.venti_outside_temperature 2.90h of 5h)",
+    "checks": [
+      "C-bedroomb: BedroomB's band still consults staleness, last-moved and battery",
+      "C-bedrooms: BedroomS's band still consults staleness, last-moved and battery",
+      "C-livingr: LivingR's band still consults staleness, last-moved and battery",
+      "C-helpers: all three per-room threshold helpers exist live",
+      "C-fresh: LIVE - every sensor read by an enabled comfort band is inside its own threshold"
+    ],
+    "measured": [
+      "C-bedroomb PASS: bedroomb: stale_hours=true, last_moved=true, battery guard=true",
+      "C-bedrooms PASS: bedrooms: stale_hours=true, last_moved=true, battery guard=true",
+      "C-livingr PASS: livingr: stale_hours=true, last_moved=true, battery guard=true",
+      "C-helpers PASS: per-room staleness threshold helpers live: 3/3",
+      "C-fresh PASS: sensors read by the enabled comfort bands that are past their own threshold: 0/10 (stalest sensor.venti_outside_temperature 2.90h of 5h)"
+    ]
+  },
+  "status": "pass",
+  "incidents": [
+    {
+      "what": "C-helpers asserted a shared input_number.room_sensor_stale_hours and failed because it does not exist.",
+      "detected_by": "helpers.json lists bedroomb_/bedrooms_/livingr_room_sensor_stale_hours and no shared helper.",
+      "fix": "The check asserts the three per-room helpers that the design actually uses.",
+      "root_cause": "The threshold was assumed to be global. It is per room, which is the more correct design, and the check was failing the code for not matching the check."
+    },
+    {
+      "what": "C-fresh reported 5 of 15 sensors overdue, including one 483 hours stale, presented as findings.",
+      "detected_by": "Tracing back which control loop reads the 483-hour sensor. None does.",
+      "fix": "Freshness is asserted only over sensors the ENABLED comfort bands actually reference - 10 sensors, 0 overdue.",
+      "root_cause": "The check swept every temperature sensor in the house rather than the ones the control loops consult, so unused hardware sitting in a drawer was reported as a control-loop fault."
+    }
+  ]
+}

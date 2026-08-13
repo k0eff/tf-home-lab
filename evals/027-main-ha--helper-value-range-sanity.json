@@ -1,0 +1,40 @@
+{
+  "id": "027",
+  "branch": "main",
+  "name": "ha--helper-value-range-sanity",
+  "category": "ha",
+  "description": "Eval 017 made the 150 helpers declarative. This eval asserts they are internally consistent: every input_number's live value lies inside its own declared min/max and sits on its own step. A value off its own step cannot be reproduced by helpers_sync --apply, so it survives in the running instance and vanishes on any rebuild - the snapshot would restore the nearest legal value instead and nobody would be told. A separate check requires anything named as a temperature target to fall in a habitable 15-32 C band, which catches a decimal-point typo that is otherwise indistinguishable from a deliberate setting.",
+  "implementation": {
+    "files": [
+      "tools/home-assistant-live/logic_model.js",
+      "tools/home-assistant-live/validate_logic.js"
+    ],
+    "changes": [
+      "Step alignment is measured from the declared minimum, not from zero, because that is how Home Assistant itself quantises the control.",
+      "logic_model.js loads both sources of truth once: the repository (main.tf, import.tf, helpers.json) and the live instance (/api/config/automation/config, /api/states, /api/services, /api/template, /api/history).",
+      "main.tf mixes two serialisations of the same field - 102 fields are HCL-escaped JSON on one physical line, 177 are multi-line jsonencode([...]) expressions. A parser that handled only the first found 25 Jinja templates; handling both finds 248. Every comfort band, i.e. all of the actual control logic, uses the second form, so the naive parser reported empty on exactly the automations worth checking.",
+      "jsonencode bodies are not parsed by hand. They are written out as terraform outputs and evaluated by terraform itself, because terraform is the authority on its own syntax and a hand-rolled HCL subset parser is one more thing that can be quietly wrong. The result is cached under a key derived from main.tf's own bytes, so the cache cannot go stale.",
+      "Comparison is done on a canonical form: HA emits trigger/action objects with either the modern (trigger:, action:) or legacy (platform:, service:) key spelling and pluralises the top-level keys, so both sides are normalised before diffing to stop a core upgrade reading as 98 automations of drift."
+    ]
+  },
+  "validation": {
+    "type": "functional_test",
+    "script": "tools/home-assistant-live/validate_logic.js --eval 027",
+    "result": "5/5 checks passed against the live instance. input_number helpers declared: 93 declared helpers absent live: 0 values outside their own range: 0 values not on their own step: 0 target helpers outside 15..32 C: 0",
+    "checks": [
+      "C1: input_number helpers are declared at all",
+      "C2: every declared helper exists live",
+      "C3: no value lies outside its own declared range",
+      "C4: no value lies off its own declared step",
+      "C5: no temperature target helper sits outside 15-32 C"
+    ],
+    "measured": [
+      "C1 PASS: input_number helpers declared: 93",
+      "C2 PASS: declared helpers absent live: 0",
+      "C3 PASS: values outside their own range: 0",
+      "C4 PASS: values not on their own step: 0",
+      "C5 PASS: target helpers outside 15..32 C: 0"
+    ]
+  },
+  "status": "pass"
+}

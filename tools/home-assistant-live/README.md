@@ -58,6 +58,10 @@ launchctl kickstart -k gui/$(id -u)/com.krasi.ha-energy-table-refresh
 Изключения:
 
 - `ha_ws_util.js` не е executable script, а shared helper module
+- `logic_model.js` също е shared module, не executable script
+- `helpers_sync.js` има subcommands: `--export`, `--check`, `--apply` (+ `--yes`)
+- `validate_logic.js` има flags: `--eval <id>`, `--all`, `--json`
+- `refresh_logic_eval_results.js` има flag: `--check`
 
 ## Зависимости
 
@@ -77,6 +81,38 @@ launchctl kickstart -k gui/$(id -u)/com.krasi.ha-energy-table-refresh
   - exports:
     - `connectWs()`
     - `rest(path, method, payload)`
+  - subcommands: няма
+  - options: няма
+- `logic_model.js`
+  - shared model за eval suite-а: зарежда repo-то (`main.tf`, `import.tf`, `helpers.json`) и live instance-а веднъж, за да не се дублира parsing bug през 12 проверки
+  - `main.tf` има ДВЕ сериализации на едно и също поле: 102 полета са escape-нат JSON на един ред, 177 са multi-line `jsonencode([...])`. Всички comfort band-ове са във втория вид, тоест parser, който знае само първия, връща празно точно за автоматизациите, които имат логика
+  - `jsonencode` телата НЕ се parse-ват на ръка — записват се като terraform `output` блокове и се оценяват от самия terraform, защото terraform е authority-то за собствения си синтаксис
+  - cache key-ът е sha256 на съдържанието на `main.tf`, тоест всяка промяна invalidate-ва cache-а автоматично
+  - exports: `loadRepo()`, `loadLive()`, `canonical()`, `renderTemplate()`, `entitiesIn()`, `templatesIn()`, `walkStrings()`
+  - subcommands: няма
+  - options: няма (`loadRepo({ noCache })`)
+
+### Eval / invariant suites
+
+- `validate_logic.js`
+  - 12 executable suite-а (evals `018`-`029`), които проверяват логиката на текущия код срещу живия instance: code↔live parity, import bijection, HCL escaping, entity references, Jinja compilability, trigger ids, BedroomS night fixed-cooling контракт, stratification frame, setpoint clamp, helper ranges, generation exclusivity, sensor staleness
+  - проверките са measured, не asserted — 024 и 028 четат история от `/api/history`, а не само конфигурация
+  - writes: не
+  - options: `--eval <id>`, `--all`, `--json`
+  - exit 0 само ако ВСЕКИ check във ВСЕКИ suite е зелен
+- `refresh_logic_eval_results.js`
+  - пуска suite-ите и записва измереното обратно в `evals/018..029` (`validation.result`, `validation.measured`, `status`)
+  - целта: нито едно измерено число в eval файл да не е преписвано на ръка, и падащ check да прави eval файла червен вместо да оставя остаряло `pass`
+  - writes: да (само `evals/*.json`)
+  - options: `--check` (само проверява дали eval файловете съвпадат с текущ run; exit 1 ако са stale)
+- `helpers_sync.js`
+  - export/check/apply на `app/stacks/home-assistant/helpers.json` срещу живите `input_*` helper-и (eval `017`)
+  - writes: да (`--export` пише файла, `--apply --yes` пише в HA)
+  - subcommands: `--export`, `--check`, `--apply`
+  - options: `--yes` (без него `--apply` само печата план)
+- `validate_helpers_sync.js`
+  - 10 check-а за `helpers_sync.js`, включително че validation run-ът оставя `helpers.json` byte-identical
+  - writes: не
   - subcommands: няма
   - options: няма
 

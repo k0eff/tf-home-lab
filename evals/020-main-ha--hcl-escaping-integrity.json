@@ -1,0 +1,50 @@
+{
+  "id": "020",
+  "branch": "main",
+  "name": "ha--hcl-escaping-integrity",
+  "category": "ha",
+  "description": "The regression guard for eval 016. Each multi-line Jinja program is stored inside an HCL string, and a serialiser that JSON.stringify-es already-escaped text turns every \\n into \\\\n. The result is a template whose statements are all still present to a grep and all dead to Jinja, because the whole program is now one line. This eval asserts the escaping layer is lossless in both directions and that the corruption signature is absent - stated precisely, because a literal two-char backslash-n is perfectly legitimate inside a Jinja string expression such as join(\"\\n\"). What cannot be legitimate is a multi-statement Jinja program containing no real newline at all.",
+  "implementation": {
+    "files": [
+      "tools/home-assistant-live/logic_model.js",
+      "tools/home-assistant-live/validate_logic.js"
+    ],
+    "changes": [
+      "C1/C2 assert the escaping layer itself: no double-escaped newline in any raw field, and unescape-then-reescape reproduces the original bytes for all 322 string-style fields.",
+      "C4 states the corruption signature exactly rather than by proxy: a template with two or more Jinja statements and zero real newlines is a collapsed program. The first version of this check flagged join(\"\\n\") in a notification body and was wrong.",
+      "logic_model.js loads both sources of truth once: the repository (main.tf, import.tf, helpers.json) and the live instance (/api/config/automation/config, /api/states, /api/services, /api/template, /api/history).",
+      "main.tf mixes two serialisations of the same field - 102 fields are HCL-escaped JSON on one physical line, 177 are multi-line jsonencode([...]) expressions. A parser that handled only the first found 25 Jinja templates; handling both finds 248. Every comfort band, i.e. all of the actual control logic, uses the second form, so the naive parser reported empty on exactly the automations worth checking.",
+      "jsonencode bodies are not parsed by hand. They are written out as terraform outputs and evaluated by terraform itself, because terraform is the authority on its own syntax and a hand-rolled HCL subset parser is one more thing that can be quietly wrong. The result is cached under a key derived from main.tf's own bytes, so the cache cannot go stale.",
+      "Comparison is done on a canonical form: HA emits trigger/action objects with either the modern (trigger:, action:) or legacy (platform:, service:) key spelling and pluralises the top-level keys, so both sides are normalised before diffing to stop a core upgrade reading as 98 automations of drift."
+    ]
+  },
+  "validation": {
+    "type": "functional_test",
+    "script": "tools/home-assistant-live/validate_logic.js --eval 020",
+    "result": "5/5 checks passed against the live instance. string-style fields containing a double-escaped \\\\n: 0 escape round-trip: 322 ok, 0 lossy fields that do not parse as JSON: 0 multi-statement templates collapsed onto one line by a double-escape: 0 templates with real newlines: 114/248",
+    "checks": [
+      "C1: no string-style field contains a double-escaped \\\\n",
+      "C2: unescape then re-escape is byte-identical for every string-style field",
+      "C3: every trigger/condition/action field parses as JSON",
+      "C4: no multi-statement template has been collapsed onto a single line",
+      "C5: multi-line templates genuinely contain real newlines"
+    ],
+    "measured": [
+      "C1 PASS: string-style fields containing a double-escaped \\\\n: 0",
+      "C2 PASS: escape round-trip: 322 ok, 0 lossy",
+      "C3 PASS: fields that do not parse as JSON: 0",
+      "C4 PASS: multi-statement templates collapsed onto one line by a double-escape: 0",
+      "C5 PASS: templates with real newlines: 114/248"
+    ]
+  },
+  "status": "pass",
+  "incidents": [
+    {
+      "what": "C4 originally flagged any literal backslash-n as corruption and reported a finding against a notification body containing join(\"\\n\").",
+      "detected_by": "Reading the flagged template, which was correct code.",
+      "fix": "C4 now states the signature exactly: two or more Jinja statements AND no real newline anywhere in the template. A single-line expression using \\n inside a string is not flagged.",
+      "root_cause": "The check tested for a symptom that the defect and a legitimate idiom share, instead of for the defect."
+    }
+  ],
+  "notes": "This eval passes. That is the point: it is the standing guard that makes the eval-016 class of corruption fail loudly the next time instead of surviving review."
+}
