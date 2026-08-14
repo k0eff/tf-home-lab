@@ -399,9 +399,13 @@ SUITES["024"] = {
     if (!res) { check(c, "C0", false, "comfort-band resource not found in main.tf"); return c; }
     const text = allFieldText(res);
 
-    const GATE = "not (summer_night_window and is_state('input_boolean.bedrooms_night_fixed_cooling', 'on') and not away)";
+    // Ordinary branches defer to a fact latch (set when fixed cooling actually
+    // ran, released once its intent stops holding) rather than testing intent
+    // directly - a missed 19:30 trigger shot no longer blocks them all night
+    // (the 2026-08-14 dead zone). See apply_bedrooms_fixed_cooling_engaged_latch.js.
+    const GATE = "not is_state('input_boolean.bedrooms_fixed_cooling_engaged', 'on')";
     const gateCount = text.split(GATE).length - 1;
-    check(c, "C1", gateCount >= 3, `suppression guard present on ${gateCount} proportional branches (expected >= 3)`);
+    check(c, "C1", gateCount >= 3, `suppression guard (latch) present on ${gateCount} proportional branches (expected >= 3)`);
 
     const setsFromHelper = /"temperature":\s*"\{\{\s*states\('input_number\.bedrooms_night_fixed_cooling_target'\)/.test(text)
       || text.includes("states('input_number.bedrooms_night_fixed_cooling_target')");

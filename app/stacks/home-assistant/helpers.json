@@ -1,6 +1,6 @@
 {
   "generated_by": "tools/home-assistant-live/helpers_sync.js --export",
-  "helper_count": 150,
+  "helper_count": 151,
   "helpers": {
     "input_boolean.bedroomb_allow_away_saving": {
       "name": "BedroomB Allow Away Saving",
@@ -60,6 +60,11 @@
     "input_boolean.bedrooms_was_away": {
       "name": "BedroomS Was Away",
       "icon": "mdi:home-export-outline",
+      "value": "off"
+    },
+    "input_boolean.bedrooms_fixed_cooling_engaged": {
+      "name": "BedroomS Fixed Cooling Engaged",
+      "icon": "mdi:snowflake-check",
       "value": "off"
     },
     "input_boolean.internet_connection": {
