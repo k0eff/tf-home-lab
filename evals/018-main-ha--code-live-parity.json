@@ -62,6 +62,12 @@
       "detected_by": "Crash on the full 98-resource run; a 3-resource smoke test had passed.",
       "fix": "maxBuffer raised to 512 MB for the terraform invocations.",
       "root_cause": "terraform apply echoes every output value, and these outputs are entire automation configs - over 1.1 MB against a 1 MB default."
+    },
+    {
+      "date": "2026-08-15",
+      "what": "Two parity gaps flagged by this eval's live/code comparison were synced live by tools/home-assistant-live/apply_bedrooms_fan_boost_latch_setup_sync.js: (a) the fan-boost latch tracker setup blocks - main.tf already carried the fan_boost_latch_on wiring, live still held the older return_boost_active-only form; (b) double-space whitespace in the choose[5]/[6]/[7] fixed-cooling deferral conditions.",
+      "detected_by": "eval 018's per-field condition/action comparison against live.",
+      "fix": "Live automation config updated in place via the tracked apply script to match main.tf on both points; no main.tf change required."
     }
   ],
   "notes": "The failures here are pre-existing drift, not a regression from this eval. Two are worth naming. aircon_hol_fan_high_no_motion and aircon_hol_fan_mid_motion carry the condition [{\"condition\":\"template\",\"value_template\":\"{{ false }}\"}] in main.tf - neutered in code - while live still holds the full original condition and the automations are enabled. A terraform apply would silently disable two working automations. presence_fused_home_detection differs in both trigger and action, with live carrying entities the code does not know about."
