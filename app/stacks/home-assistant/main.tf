@@ -5713,6 +5713,15 @@ resource "homeassistant_automation" "test_aircon_bedrooms_room_sensor_comfort_ba
               }
             },
             {
+              "service" = "climate.set_fan_mode"
+              "target" = {
+                "entity_id" = "climate.v537_spalniam_2"
+              }
+              "data" = {
+                "fan_mode" = "{{ states('input_number.bedrooms_cooling_fan_mode') | int(2) }}"
+              }
+            },
+            {
               "service" = "input_boolean.turn_on"
               "target" = {
                 "entity_id" = "input_boolean.bedrooms_fixed_cooling_engaged"

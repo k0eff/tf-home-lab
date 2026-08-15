@@ -177,10 +177,79 @@ This re-apply rule is intentional. MELCloud can drift or report a stale state,
 and a separate comfort automation must not be the only thing that corrects an
 active manual override.
 
+## Night Fixed Cooling (BedroomS)
+
+BedroomS-only. On summer nights, the normal proportional comfort-band cycling
+(on/off/fan_only/coil cool-down) is replaced by a single fixed setpoint that is
+written once and then left alone, so the AC's own thermostat holds the room
+overnight instead of the loop nudging it.
+
+- Toggle: `input_boolean.bedrooms_night_fixed_cooling`.
+- Setpoint: `input_number.bedrooms_night_fixed_cooling_target`. This value is
+  deliberately AC-side, not room-side: it is the room comfort target plus the
+  AC-internal-sensor-vs-room calibration offset, measured at the normal
+  cooling fan speed. That is why it differs from
+  `input_number.bedrooms_summer_night_target` - the two helpers answer
+  different questions and one should not be "corrected" to match the other.
+
+### Handover
+
+The branch fires only on these trigger ids:
+
+- `summer_night_fixed_cooling_start` - the 19:30 clock trigger.
+- `night_fixed_cooling_toggle_on` - the toggle turning on mid-window, so
+  enabling after 19:30 takes effect immediately instead of waiting for the
+  next day.
+- `night_fixed_cooling_presence_home` - presence returning while the
+  window/toggle already hold.
+
+All three are gated on the same conditions: summer season mode
+(`climate_mode`), `summer_night_window`, the toggle being on, and not `away`.
+On a match the branch, in order:
+
+1. `climate.set_hvac_mode` to `cool`.
+2. `climate.set_temperature` to the fixed setpoint.
+3. `climate.set_fan_mode` normalized from `input_number.bedrooms_cooling_fan_mode`
+   - the plain helper, deliberately not the boost-resolved `cooling_fan_mode`
+     setup variable, because a latched
+     [return boost](#return-boost-all-3-rooms-as-of-2026-07-19) fan speed must
+     not survive into the night (added 2026-08-15, to close the gap below).
+4. `input_boolean.bedrooms_fixed_cooling_engaged` turned on.
+
+The setpoint is written once per handover and is not re-asserted until the
+next handover. This is a deliberate write-once contract: the AC's own
+thermostat is trusted to hold the room, and nothing polls or re-sends the
+setpoint overnight.
+
+### Engagement latch
+
+The three summer comfort branches (cool-when-above-band, coil cool-down,
+turn-off-after-cool-down) defer while `bedrooms_fixed_cooling_engaged` is on.
+This is a fact-based latch, not a re-check of intent: the branches are
+suppressed because the handover already happened, not because the
+window/toggle/away conditions currently hold. The latch releases once the
+window/toggle/not-away intent stops holding, at which point normal comfort
+cycling resumes on its own.
+
+### Known gap (accepted)
+
+A device-side fan change mid-window - via the IR remote or the MELCloud app -
+is not corrected until the next handover trigger. This is the 2026-08-15
+incident vector: fan 5 arrived device-side during a 16:00-20:00 MELCloud
+staleness window, and neither handover firing that evening touched it, so the
+AC idled most of the night with the wrong fan speed. Periodic fan re-assert
+was deliberately not added, to preserve the write-once contract above.
+Revisit if this recurs.
+
 ## Air Cleaning And Coil Cool-Down
 
-The 03:00-06:00 air-clean window is allowed to use `fan_only` with fan 5 in both
-seasons.
+The 03:00-06:00 air-clean window is allowed to use `fan_only` with fan 5.
+Since the 2026-07-24 calendar guard, this window and the night-off branch are
+winter-only - inert March-November. In summer the night is owned instead by
+comfort cycling against the night summer target (see Comfort Loop above), and
+for BedroomS specifically by the toggle-gated
+[Night Fixed Cooling](#night-fixed-cooling-bedrooms) contract, which takes
+over from that cycling entirely.
 
 When cooling reaches the configured stop band, the climate should transition to
 `fan_only` for the configured coil cool-down duration before turning off. The

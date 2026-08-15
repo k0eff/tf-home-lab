@@ -1,0 +1,32 @@
+{
+  "id": "030",
+  "branch": "main",
+  "name": "ha--bedrooms-fixed-cooling-fan-normalize",
+  "category": "ha",
+  "description": "The BedroomS night fixed-cooling handover (eval 007/024 contract: write the AC setpoint once at 19:30, disengage the program, let the AC hold it) silently depended on the fan being at its normal cooling speed. The fixed target 24.0 encodes an AC-sensor-vs-room calibration offset measured at fan 2; at fan 5 the AC's intake sensor reads ~1C below the room, the sign of the offset flips, and the unit idles while the real room floats toward 25C with maximum fan noise. Nothing could correct the fan until morning: the daytime fan branches are gated on not night_sleep_window, the comfort branches defer to the fixed_cooling_engaged latch, and the night branches are calendar-inert Mar-Nov. Incident 2026-08-15: fan 5 arrived device-side during a 16:00-20:00 MELCloud staleness window and both handover firings (19:30 trigger, 20:00 presence re-arm) left it untouched. This eval asserts the handover now also normalizes fan mode: the fixed-cooling branch sequence must contain a climate.set_fan_mode action reading input_number.bedrooms_cooling_fan_mode (the plain helper, deliberately NOT the boost-resolved cooling_fan_mode setup variable - a latched fan boost at 19:30 would pin fan 5 all night through the same mechanism), placed before the engagement-latch turn_on, in both the live automation config and main.tf.",
+  "implementation": {
+    "files": [
+      "tools/home-assistant-live/apply_bedrooms_fixed_cooling_fan_normalize.js",
+      "app/stacks/home-assistant/main.tf"
+    ],
+    "changes": [
+      "New 4th action in the 'Summer: night fixed-cooling' choose branch, at index 2 (after climate.set_temperature, before input_boolean.turn_on bedrooms_fixed_cooling_engaged): climate.set_fan_mode on climate.v537_spalniam_2 with fan_mode template {{ states('input_number.bedrooms_cooling_fan_mode') | int(2) }}",
+      "Template is self-contained by design - no {% set %} setup-block prefix - so the duplicated-setup-block failure mode documented in CLIMATE_CONTROL.md cannot apply to it",
+      "Live patch applied via tracked apply script (asserts exact 3-action sequence before splicing, idempotent on climate.set_fan_mode presence, verifies 4-action sequence via re-GET after automation reload)",
+      "One-off remediation for the active night: fan manually returned 5 to 2 since the handover triggers had already fired"
+    ]
+  },
+  "validation": {
+    "checks": [
+      "Live automation config: fixed-cooling branch sequence is exactly 4 actions with climate.set_fan_mode at index 2 reading input_number.bedrooms_cooling_fan_mode",
+      "main.tf fixed-cooling branch mirrors the same 4-action sequence (live/code parity per eval 018)",
+      "fan_mode template does not reference the boost-resolved cooling_fan_mode setup variable",
+      "No other branch, trigger, or action of the automation changed",
+      "Eval 024 contract intact: the handover still writes the setpoint from input_number.bedrooms_night_fixed_cooling_target and comfort branches still defer via the engagement latch"
+    ]
+  },
+  "status": "pass",
+  "incidents": [
+    "2026-08-15 evening: room held ~23.8-24C against a 23.4C night comfort intent while fan 5 ran all evening; AC internal sensor read 22-23C (below room), compressor idle. Fan 5 originated device-side during a MELCloud recorder gap 16:00-20:00 and survived both fixed-cooling handover firings."
+  ]
+}
