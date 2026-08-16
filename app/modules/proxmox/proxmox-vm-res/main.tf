@@ -14,6 +14,16 @@ resource "proxmox_vm_qemu" "proxmox_vm" {
     vm_state = "started"
     onboot = each.value.onboot
 
+    // The provider default is the emulated LSI 53C895A. Under sustained
+    // parallel I/O it times out and resets the SCSI bus — on 2026-08-16 vm700
+    // logged "TARGET RESET operation timed-out" and "sym0: SCSI BUS has been
+    // reset", after which the guest saw I/O errors on both its disks and ext4
+    // aborted its journal. The NVMe underneath reported zero media errors the
+    // whole time. virtio-scsi-single is the paravirtualised controller and is
+    // built into the Ubuntu cloud kernel (CONFIG_SCSI_VIRTIO=y), so it needs
+    // no initramfs work.
+    scsihw = "virtio-scsi-single"
+
   dynamic "disk" {
     for_each = flatten([ // 2d->1d array
       for d in [ // remove nulls
@@ -51,6 +61,18 @@ resource "proxmox_vm_qemu" "proxmox_vm" {
       storage     = lookup(disk.value, "storage", null)
       size        = lookup(disk.value, "size", null)
       disk_file   = lookup(disk.value, "disk_file", null)
+
+      // Proxmox defaults to aio=io_uring, which on LVM-thin under sustained
+      // heavy writes threw sporadic EIO at the guest: on 2026-08-16 vm700's
+      // 200 GB disk failed mid-build, ext4 aborted its journal and remounted
+      // read-only, while the NVMe underneath reported SMART PASSED and the
+      // failing sectors re-read fine afterwards. threads is the stable option
+      // for this storage. Cloud-init drives take no such flag.
+      //
+      // Existing VMs are NOT reconciled from here — `disk` is in the
+      // ignore_changes list below — so the same change was applied directly to
+      // vm700 through the Proxmox API. This covers VMs created from now on.
+      asyncio = disk.value.type == "disk" ? "threads" : null
     }
   }
 

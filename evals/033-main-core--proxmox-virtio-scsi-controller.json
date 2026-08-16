@@ -1,0 +1,26 @@
+{
+  "id": "033",
+  "branch": "main",
+  "name": "core--proxmox-virtio-scsi-controller",
+  "category": "core",
+  "description": "VMs get the paravirtualised virtio-scsi-single controller instead of the provider's emulated LSI 53C895A default, which was resetting the SCSI bus under load on vm700 and corrupting its filesystems",
+  "implementation": {
+    "file": "app/modules/proxmox/proxmox-vm-res/main.tf",
+    "change": "scsihw = \"virtio-scsi-single\" on proxmox_vm_qemu, with a comment recording the bus-reset evidence"
+  },
+  "validation": {
+    "type": "config_applied",
+    "checks": [
+      "Root cause in the guest log, in order: 'scsi target2:0:1: No MSG IN phase after reselection' -> 'TARGET RESET operation timed-out' -> 'sym0: SCSI BUS has been reset' -> 'I/O error, dev sda' -> 'EXT4-fs error (device sda2)'. sym0 is the sym53c8xx driver bound to the emulated LSI controller",
+      "Storage below was healthy throughout: NVMe SMART Media and Data Integrity Errors 0, Available Spare 100%, Percentage Used 6%, lvm-thin pool 41% data and 1.68% metadata",
+      "Both incidents trace to the same controller: 2026-08-16 04:03 on /dev/sdb and 08:18 on /dev/sda, and the orphaned containerd snapshot from 2026-08-14 sits on the same disk",
+      "Switch is safe on this guest: CONFIG_SCSI_VIRTIO=y in /boot/config-6.8.0-137-generic and modinfo virtio_scsi reports '(builtin)', so no initramfs rebuild is needed; /etc/fstab mounts by UUID, so device renaming cannot break the boot",
+      "Applied to vm700 through the Proxmox API (scsihw=virtio-scsi-single) and confirmed live: lspci reports 'Red Hat, Inc. Virtio SCSI' and sym0 no longer appears",
+      "Post-change boot is clean: zero 'i/o error' lines in dmesg, and a forced fsck took /dev/sda2 from 'clean with errors' back to 'clean'",
+      "Existing VMs are not reconciled by terraform for this attribute either — the change reached vm700 via the API; the module covers VMs created from now on",
+      "Verified by inspection only: no terraform plan/apply was run"
+    ]
+  },
+  "status": "pass",
+  "validated_on": "proxmox.local.koeff.com:8006 VM 700, guest 192.168.31.152"
+}

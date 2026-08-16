@@ -1,0 +1,26 @@
+{
+  "id": "032",
+  "branch": "main",
+  "name": "core--proxmox-disk-aio-threads",
+  "category": "core",
+  "description": "Proxmox VM disks are created with aio=threads instead of the io_uring default, after vm700 threw sporadic EIO under sustained write load and took its 200 GB ext4 filesystem read-only. NOTE: aio was the first hypothesis and did NOT fix it — the real cause was the emulated LSI controller, see eval 033. The setting is kept as sound practice for LVM-thin, not as the fix",
+  "implementation": {
+    "file": "app/modules/proxmox/proxmox-vm-res/main.tf",
+    "change": "asyncio = \"threads\" on disk-type entries of the dynamic disk block (null for the cloud-init drive), with a comment recording the incident and the fact that ignore_changes = [disk] keeps this from reaching existing VMs"
+  },
+  "validation": {
+    "type": "config_applied",
+    "checks": [
+      "Incident evidence: guest dmesg on 2026-08-16 04:03:34 shows 'I/O error, dev sdb' on multiple sectors, then 'EXT4-fs error (device sdb): Detected aborted journal' and 'Remounting filesystem read-only'",
+      "Hardware ruled out: every reported failing sector re-reads without error afterwards, a 200 MiB sequential read runs at 520 MB/s, NVMe SMART reports PASSED, and the lvmthin pool is 40% full (761 GB of 1884 GB) with metadata at 1.7%",
+      "Filesystem repaired: e2fsck -fy /dev/sdb corrected an orphaned inode list and free-block/free-inode counts, exit status 1 (errors corrected)",
+      "vm700 scsi0 and scsi1 now read local-lvm:vm-700-disk-N,aio=threads,replicate=0,size=... in the Proxmox config",
+      "The setting is live, not just pending: VM was shut down (ACPI, 15s) and started again",
+      "Post-change boot looked clean at first, but the errors returned on the next heavy run and hit /dev/sda too — so aio was not the cause. Superseded as an explanation by eval 033 (scsihw=lsi bus resets); retained because threads is the safer aio mode on LVM-thin",
+      "Provider Telmate/proxmox 3.0.1-rc6 accepts asyncio on the disk block",
+      "Terraform module change verified by inspection only: `disk` is in lifecycle.ignore_changes, so no plan/apply against existing VMs was run"
+    ]
+  },
+  "status": "pass",
+  "validated_on": "proxmox.local.koeff.com:8006 VM 700, guest 192.168.31.152 /dev/sdb"
+}

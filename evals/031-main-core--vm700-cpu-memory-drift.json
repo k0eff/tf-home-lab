@@ -1,0 +1,23 @@
+{
+  "id": "031",
+  "branch": "main",
+  "name": "core--vm700-cpu-memory-drift",
+  "category": "core",
+  "description": "The vm700 block in prod.tfvars matches what the hypervisor actually runs, so an apply can no longer halve the RAM and cut the cores of the ops host out from under RocketChat, LiteLLM, music-production-engine and OmniRoute",
+  "implementation": {
+    "file": "app/stacks/proxmox-vm/tfvars/prod.tfvars",
+    "change": "rocketchat (vm700): memory 8192 -> 16384, balloon 8192 -> 16384, cores 1 -> 4, vcpus 1 -> 4, plus a comment recording that the block is the general-purpose ops host and that the figures were raised in the Proxmox UI without being written back"
+  },
+  "validation": {
+    "type": "config_matches_reality",
+    "checks": [
+      "Proxmox API GET /nodes/proxmox/qemu/700/config reports memory=16384, balloon=16384, cores=4, sockets=1, vcpus=4",
+      "prod.tfvars rocketchat block carries the same four values",
+      "Guest agrees: free -m on 192.168.31.152 shows 15993 MB total",
+      "No other VM block in prod.tfvars was touched",
+      "Drift was real, not cosmetic: the pre-change file would have driven an apply to 8192 MB / 1 core on a host whose steady-state usage is already above 8 GB"
+    ]
+  },
+  "status": "pass",
+  "validated_on": "proxmox.local.koeff.com:8006, VM 700"
+}
