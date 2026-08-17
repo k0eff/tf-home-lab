@@ -128,6 +128,14 @@ Note the motion check is whole-house, not per-room: all three rooms compute
 tell "someone is in this specific room" from "someone is home and moving
 anywhere" - it only relaxes when the whole house looks quiet.
 
+`away_by_no_motion` is gated by `day_air_clean_window` (09:00-23:59, per
+`input_datetime.bedrooms_day_start`), so intersected with the night window it
+can only go true between 19:30 and 23:59, not for the rest of the night -
+still an expected pre-midnight event once everyone falls asleep and stops
+moving for 30+ minutes, not an absence. That distinction matters wherever
+"away" gates a state that should only be released by genuine absence, not by
+sleep: see [hard_away](#night-fixed-cooling-bedrooms) below.
+
 ## Return Boost (all 3 rooms, as of 2026-07-19)
 
 The away-relax band trades comfort for energy savings while the room is
@@ -204,8 +212,16 @@ The branch fires only on these trigger ids:
   window/toggle already hold.
 
 All three are gated on the same conditions: summer season mode
-(`climate_mode`), `summer_night_window`, the toggle being on, and not `away`.
-On a match the branch, in order:
+(`climate_mode`), `summer_night_window`, the toggle being on, and not
+`hard_away` - a local variable scoped to just this branch's condition and the
+engagement-latch tracker below, `hard_away = allow_away_saving and
+away_by_presence`. It deliberately drops the `away_by_no_motion` term from
+the shared `away` formula (added 2026-08-17, incident below): genuine
+presence absence still blocks/breaks the handover, but the household falling
+asleep and going still no longer counts as "away" for this branch. The
+shared `away` variable itself is untouched everywhere else - daytime relax,
+return-boost, LivingR/BedroomB all still use the full formula. On a match
+the branch, in order:
 
 1. `climate.set_hvac_mode` to `cool`.
 2. `climate.set_temperature` to the fixed setpoint.
@@ -228,8 +244,30 @@ turn-off-after-cool-down) defer while `bedrooms_fixed_cooling_engaged` is on.
 This is a fact-based latch, not a re-check of intent: the branches are
 suppressed because the handover already happened, not because the
 window/toggle/away conditions currently hold. The latch releases once the
-window/toggle/not-away intent stops holding, at which point normal comfort
-cycling resumes on its own.
+window/toggle/`hard_away` intent stops holding (same `hard_away` as the
+handover condition above, not the shared `away`), at which point normal
+comfort cycling resumes on its own. Because `hard_away` ignores motion, a
+quiet house overnight no longer releases the latch; only the window/toggle
+ending or a genuine presence absence does.
+
+### Resolved: motion-quiet drop (2026-08-16/17)
+
+Before the `hard_away` split, both the handover condition and the latch
+tracker used the full `away` variable, including `away_by_no_motion`. Because
+`away_by_no_motion` is itself gated by `day_air_clean_window` (09:00-23:59),
+intersected with `summer_night_window` (19:30-08:30) the bug could only fire
+between 19:30 and 23:59, not all night. The latch tracker's condition (`not
+(summer_night_window and toggle and not away)`) went true - and turned the
+engaged latch off - the moment the whole house sat still for 30+ minutes
+within that window. None of the handover's three trigger ids fire on "motion
+resumed" (only the 19:30 clock, the toggle flipping on, or a real
+presence-home transition), so once dropped the latch stayed off for the rest
+of the night and the room silently reverted to full proportional comfort
+cycling - the recurring "temperature fluctuates overnight" symptom. Confirmed
+live 2026-08-16 23:48:15 (inside the 19:30-23:59 window), coincident with
+`was_away` flipping true from motion-quiet with no person not_home/home
+transition involved. Fixed by scoping `hard_away` (drops `away_by_no_motion`)
+into just the handover condition and the latch tracker; see eval 034.
 
 ### Known gap (accepted)
 

@@ -1,0 +1,38 @@
+{
+  "id": "034",
+  "branch": "main",
+  "name": "ha--bedrooms-fixed-cooling-hard-away",
+  "category": "ha",
+  "description": "The BedroomS night fixed-cooling handover (branch 0) and its engagement-latch tracker action both gate on the shared `away` variable, which is `allow_away_saving and (away_by_presence or away_by_no_motion)`. away_by_no_motion is a whole-house 30-minute no-motion heuristic with no night-window exclusion, so it goes true as soon as everyone falls asleep and stops moving - a normal, expected nightly event, not an absence. The latch tracker's condition `not (summer_night_window and toggle_on and not away)` therefore flips true and turns bedrooms_fixed_cooling_engaged off mid-sleep (confirmed live 2026-08-16 23:48:15, coincident with was_away flipping on from motion-quiet, no genuine person not_home transition involved). None of branch 0's three trigger ids fire on 'motion resumed', so the latch stays off and the automation silently reverts to full proportional on/off/fan_only comfort cycling for the rest of the night - reproducing the reported temperature fluctuation. This is the 2026-08-16/17 incident, distinct from the 2026-08-15 fan-normalize bug (eval 030) and the earlier dead-zone/presence-lag bug (commit 75c7bba, predates eval 007).",
+  "implementation": {
+    "files": [
+      "tools/home-assistant-live/apply_bedrooms_fixed_cooling_hard_away.js",
+      "app/stacks/home-assistant/main.tf"
+    ],
+    "changes": [
+      "New local variable hard_away = allow_away_saving and away_by_presence (drops the away_by_no_motion term), added to exactly two setup-block copies: branch 0's trigger condition, and the 'Track fixed-cooling engagement latch' tracker action's condition",
+      "Both templates' final {{ ... }} expression changed from `not away` to `not hard_away` in those two spots only",
+      "The shared `away` variable itself is untouched everywhere else - daytime relax band (away_relax_delta), return-boost tracking (was_away/away_ended_at), and LivingR/BedroomB still use full away including away_by_no_motion, which is correct for energy saving during genuinely quiet daytime periods",
+      "Genuine presence absence (away_by_presence) still defers/breaks fixed cooling and still re-arms correctly on the existing night_fixed_cooling_presence_home trigger; only the motion-quiet component stops being able to drop the latch"
+    ]
+  },
+  "validation": {
+    "checks": [
+      "Live automation config: branch 0 condition and latch-tracker action condition both reference hard_away in their final expression, not away",
+      "grep of full fetched config JSON confirms `not away }}` occurs zero times in branch 0's condition and in the latch-tracker condition after the patch (old text fully replaced in both target copies, not just one)",
+      "grep confirms all other ~20-30 setup-block copies (daytime relax, return-boost, LivingR/BedroomB, other BedroomS branches) still reference the original `away` variable, unchanged - hard_away must not leak into any other copy",
+      "main.tf mirrors the same two-site change (live/code parity per eval 018)",
+      "Regression check (the actual bug): with summer_night_window true, toggle on, away_by_presence false, and away_by_no_motion true (simulated whole-house 30-min motion quiet), the latch-tracker condition template renders false - engaged latch is NOT turned off",
+      "Contrast check: with away_by_presence true (real person not_home), the latch-tracker condition template still renders true - engaged latch IS turned off, and branch 0's condition still blocks re-firing until a real presence-home transition, per eval 007/024",
+      "Eval 007/024 contract intact: write-once setpoint at handover, fact-based latch deferral for comfort branches, presence-based re-arm still works",
+      "No other branch, trigger, or action of the automation changed"
+    ]
+  },
+  "status": "pass",
+  "incidents": [
+    "2026-08-16 23:48:15: bedrooms_fixed_cooling_engaged turned off mid-night by the latch tracker, coincident with was_away flipping true from whole-house motion-quiet (people asleep), no genuine person not_home transition. No branch-0 trigger fires on motion resuming, so comfort cycling ran unrecovered for the rest of the night - the reported 'temperature fluctuates again' regression, 15th in a series per the user. QA (2026-08-17/18) narrowed the exact blast radius: away_by_no_motion is itself gated by day_air_clean_window (09:00-23:59), so intersected with summer_night_window (19:30-08:30) the old bug could only trip between 19:30 and 23:59, not all night - the 23:48:15 timestamp sits inside that window, consistent with the diagnosis."
+  ],
+  "notes": [
+    "Independent Opus QA (2026-08-17/18) verified live-config and main.tf: all 32 pre-existing `{% set away = ... %}` copies individually confirmed byte-unchanged, all 99 live automations swept (hard_away appears in exactly 1), read-only /api/template regression render confirmed hard_away=False/away=True for the asleep-but-present scenario and hard_away=True for genuine absence on both the synthetic template and the actual live final expressions (pre-fix text reproduced the bug on the same inputs). Idempotency of tools/home-assistant-live/apply_bedrooms_fixed_cooling_hard_away.js re-run live twice, clean no-op both times. Real-world corroboration: engagement latch held from 2026-08-17 20:18:35 through at least 00:43 the next night, spanning the exact window (19:30-23:59) that dropped it the night before the fix. Post-QA remediation: tightened CLIMATE_CONTROL.md's away_by_no_motion window claim, fixed two stale main.tf comments (~5503-5510) still describing the branch-0 gate as 'not away', and hardened apply_bedrooms_fixed_cooling_hard_away.js's alreadyApplied() to also check the final expression (not just the set-line) so a half-mangled state errors instead of silently no-op'ing."
+  ]
+}
