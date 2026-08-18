@@ -1,0 +1,54 @@
+{
+  "id": "035",
+  "branch": "main",
+  "name": "ha--manual-override-ac-calibration-offset",
+  "category": "ha",
+  "description": "The manual override automations for all three rooms wrote input_number.<room>_manual_target_temperature straight into climate.set_temperature with no calibration, so that value landed on the AC's own thermostat rather than describing the room. Measured on BedroomB 2026-08-17/18: the user set 24.8, the device held 25.0 (target_temp_step 0.5 snapped the off-grid value, and the logbook reported 24.8 for 417 consecutive applies), and the bed-level sensor averaged 22.97 (22.6-23.3, n=78) over 6.5 h. This change makes the manual target room-side and derives the AC-side number by adding a per-room offset, gated on cool, snapped to 0.5 and clamped to 16-31. Five independent adversarial reviews of the first implementation are recorded in `notes`; the offsets shipped here are deliberately smaller than the raw measurement because those reviews showed the constant-offset model is weakly identified.",
+  "implementation": {
+    "files": [
+      "app/stacks/home-assistant/helpers.json",
+      "app/stacks/home-assistant/main.tf",
+      "app/stacks/home-assistant/CLIMATE_CONTROL.md",
+      "tools/home-assistant-live/apply_manual_override_ac_calibration.js"
+    ],
+    "changes": [
+      "New helper per room: input_number.<room>_manual_ac_calibration_offset (min -3, max 5, step 0.1, mode box, unit C). Deliberately NOT named *_stratification_offset, so helpers_sync.js RUNTIME_VALUE does not exempt it from value-drift enforcement and no learner rewrites it",
+      "climate.set_temperature template in each of the three manual override automations changed from `{{ states('input_number.<room>_manual_target_temperature') | float(24) }}` to manual_target plus the offset, snapped to the device's 0.5 grid and clamped: `{{ [16, [31, (((manual_target + calibration_offset) * 2) | round(0)) / 2] | min] | max }}`",
+      "The offset is gated on `is_state('input_select.<room>_manual_hvac_mode', 'cool')` and is zero in every other mode. Both error terms it corrects are cooling-direction; in heat the unit-undershoot term reverses sign, so an ungated offset would drive the room hotter. No room has a heat-side measurement",
+      "Seeds: bedroomb 1.0 (calibration run - half the 2.03 the single measured night implied), bedrooms 0.0 and livingr 0.0 (uncalibrated; 0.0 reproduces pre-change behaviour exactly)",
+      "Logbook message reports both the requested room-side target and the AC-side value actually written, plus the offset in force"
+    ]
+  },
+  "validation": {
+    "checks": [
+      "Live config of all three manual override automations contains the offset term, the cool gate, the 0.5 snap and the clamp",
+      "grep-for-zero: neither the pre-change template nor the ungated first-generation template survives anywhere live or in main.tf",
+      "Blast radius: the offset entity appears in exactly 3 of 99 live automations, one per room, and in no comfort-band automation",
+      "Mode gate proven by render, not by inspection: with the hvac selector on cool the bedroomb template renders 26.0 (target 24.8 + offset 1.0); with the gate forced false it renders 25.0, i.e. pre-change behaviour",
+      "Clamp proven by render at both ends: target 30 + offset 5 renders 31, target 16 + offset -3 renders 16",
+      "Degraded inputs: a missing or unavailable offset helper renders as offset 0 rather than erroring (float(0) fallback), verified against a nonexistent entity",
+      "Logbook message renders to clean prose with no leftover template syntax and exactly one ac_applied= clause per automation - this specifically catches the malformed-tail bug the first remediation introduced",
+      "Idempotency: apply script re-run twice is a clean no-op, and its already-applied test is an exact clause match, not a substring probe",
+      "helpers_sync.js --check: 154 declared = 154 live, and none of the three new helpers appears in the drift list",
+      "main.tf mirrors live for all three automations - verified through logic_model.js canonical comparison of alias/mode/trigger/condition/action, all three IDENTICAL",
+      "Regression: validate_logic.js --all shows no new failure attributable to this change; the three manual override resources appear in none of eval 018's C3-C7 mismatch lists",
+      "Regression: evals 007/024 (BedroomS night fixed cooling) use input_number.bedrooms_night_fixed_cooling_target, a different path, untouched here",
+      "NOT YET VALIDATED, and the reason this eval is still pending: whether a given offset actually lands the room on the manual target. That needs one calibration night per room, measured per the protocol in CLIMATE_CONTROL.md"
+    ]
+  },
+  "status": "pending",
+  "incidents": [
+    "2026-08-17/18: manual override set on BedroomB at 01:26 local, duration 420 min, manual target changed 24.5 -> 24.8 at 01:29. climate.v357_spalniag_2 held target 25.0 for the whole window; bed-level sensor (sensor.miaomiaoce_t2_5249_temperature) averaged 22.97 (min 22.6, max 23.3) from 02:00 to 08:25, ceiling sensor 24.69, AC-reported 23.83. Comfort loop correctly stood down throughout - the only two comfort-band logbook entries on the climate entity are at 08:27:30, after override expiry, triggered by the expiry branch itself.",
+    "Falsifiable prediction on record from the causal review, for the first BedroomB calibration night: if the constant-offset model held, the bed sensor would land near the manual target and the AC's reported temperature would dither one step below the commanded setpoint. If instead the AC's reported temperature never drops below the commanded setpoint and the bed lands well above the manual target, the constant-offset model is wrong and the manual path needs closed-loop control rather than a bigger constant."
+  ],
+  "notes": [
+    "Five independent adversarial reviews were run against the first implementation (2026-08-18) with distinct lenses: measurement validity, template logic, blast radius, contract compliance, and causal model. Two blockers survived scrutiny and were fixed before this eval was finalised.",
+    "BLOCKER FIXED - the offset was applied in every hvac mode while every number behind it is a cooling measurement. Found independently by two reviewers and confirmed directly: the only guard around the temperature write is `hvac_mode != 'off'`, and all three rooms' selectors offer heat/dry/heat_cool/fan_only. Now gated on cool.",
+    "BLOCKER FIXED - the seeds were over-confident. The constant-offset model is weakly identified: on BedroomS, load-matched, d(room)/d(setpoint) is ~0.42, not 1.0; the unit shows a ~1.6 K deadband (AC-reported alternated 23.5/24.0 on a ~42 min cycle during the measurement window); between-night spread is ~+/-1 K once autocorrelation is accounted for (room sensors update every ~11 min); and BedroomB free-running at night sits at 26.0-26.6 on its own sensor, so the originally seeded 2.0 would have commanded 27.0 - above the free-running temperature, which would stop cooling rather than trim it. BedroomB reseeded 2.0 -> 1.0, BedroomS 0.9 -> 0.0.",
+    "BUG FOUND AND FIXED DURING REMEDIATION - the first fix's logbook rewrite used a regex whose `[^)]*` terminated inside `states(...)`, leaving a malformed ' }})' tail in the live message. Caught by main.tf/live parity, then repaired by rebuilding the whole target=...,fan= clause. The apply script now renders the resulting message through /api/template and refuses to finish if any template syntax survives.",
+    "ACCEPTED, NOT FIXED - the three new tunables are on no dashboard, while every other manual-override helper is exposed on the per-room Tune view. The doc tells the user to calibrate with no UI to do it in. Tracked separately.",
+    "ACCEPTED, NOT FIXED - eval 027 fails live on bedroomb_manual_target_temperature=24.8 being off-step. That value is the user's own setting from the incident; overwriting it would discard a real preference. Documented in CLIMATE_CONTROL.md instead.",
+    "ACCEPTED, NOT FIXED - eval 026 counts only dynamic_setpoint assignments, so the manual setpoint's clamp is outside its coverage. This eval's own render checks cover it; a future suite entry should not.",
+    "NOT REPRODUCED - claims that the change leaked outside the three automations, that the HA schema migration (trigger->triggers, service->action) lost anything, or that helpers.json was corrupted. All 99 live automations swept; leaf-path diff against main.tf 79 = 79; all trigger ids and choose nesting survived; helper_count 154 = 154 live."
+  ]
+}

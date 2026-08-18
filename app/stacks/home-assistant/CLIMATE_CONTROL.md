@@ -185,6 +185,82 @@ This re-apply rule is intentional. MELCloud can drift or report a stale state,
 and a separate comfort automation must not be the only thing that corrects an
 active manual override.
 
+### Manual Target Is Room-Side, The AC Gets A Calibrated Number
+
+`input_number.<room>_manual_target_temperature` is what you want the room to be
+at the room sensor. It is not what gets written to the climate entity. While the
+manual HVAC mode is `cool`, the automation writes
+
+    manual_target + input_number.<room>_manual_ac_calibration_offset
+
+snapped to the device's 0.5 grid and clamped to 16-31. In every other mode the
+offset is zero and the manual target is written through unchanged.
+
+The mode gate is not cosmetic. Both errors the offset corrects are
+cooling-direction: a unit settling below its own setpoint while cooling reverses
+sign when heating, and no room has a heat-side measurement. Applying a cooling
+offset in `heat` would drive the room hotter, not more accurate.
+
+**The offset is an empirical knob, not a derived constant.** Do not treat it as
+a physical property of the room. What is actually established:
+
+- On BedroomB, 2026-08-17/18, a 6.5 h manual override at fan 2 with an AC-side
+  setpoint of 25.0 held the bed-level sensor at 22.97 (22.6-23.3, n=78). That
+  single observation is the whole basis for BedroomB's seed, and one night at
+  one setpoint cannot measure a slope.
+- The relationship is **not** 1:1. On BedroomS, load-matched, the unit tracks
+  its own sensor against setpoint at ~1.16 but the room follows at **~0.42**.
+  Adding 2 K of setpoint does not buy 2 K at the bed.
+- There is a deadband of roughly 1.6 K: during the BedroomB window the AC's
+  reported temperature alternated 23.5/24.0 on a ~42 min cycle. A setpoint puts
+  the room in a band, not on a value.
+- Between-night spread is about **+/-1 K**, not the +/-0.1 the raw sample count
+  suggests. The room sensors update every ~11 min and consecutive samples are
+  heavily autocorrelated, so the effective sample size is far below the number
+  of grid points.
+- A cooling setpoint is a ceiling. If the offset pushes it above where the room
+  free-runs, the unit simply stops cooling. BedroomB free-running at night sits
+  around 26.0-26.6 on the AC's own sensor, so offsets that push its setpoint
+  toward 27 risk disabling cooling rather than trimming it.
+
+Current values, and what each one means:
+
+| Room | Offset | Status |
+| --- | --- | --- |
+| BedroomB | 1.0 | **calibration run.** Deliberately half of the 2.03 the single night implied, both because the room-follows-setpoint slope is well under 1 and because a larger offset would push the setpoint past where the room free-runs. Measure, then adjust. |
+| BedroomS | 0.0 | uncalibrated. The 0.89 measured on this unit comes from night fixed cooling at fan 2; manual mode runs fan 4, and the offset is fan-dependent. |
+| LivingR | 0.0 | uncalibrated. LivingR cools in short comfort-loop cycles, so the instance holds no manual-style run to measure. |
+
+`0.0` means "not yet calibrated" and reproduces the pre-change behaviour exactly.
+It is not a claim that the room needs no correction.
+
+**Calibration protocol.** Set the room's manual target, run one override of at
+least 3 h in `cool` at the fan speed you actually use, then compare the room
+sensor's steady-state mean over the last 2 h against the manual target. Move the
+offset by the difference, damped - do not apply the full gap in one step. Repeat
+whenever the manual fan speed changes: on BedroomB, ceiling-minus-bed
+stratification is 0.63 K with the AC off, 1.80 K in `fan_only` at fan 2, and
+0.29 K at fan 5.
+
+**Do not confuse this helper with `<room>_ac_stratification_offset`.** That one
+is a *sensor* correction applied to `ac_temp` inside the comfort loop, the
+comfort loop's own learner rewrites it every few minutes, and it exists only for
+BedroomB. This one is a *setpoint* correction, only for the manual path, and
+nothing writes it but you.
+
+The logbook line for each apply reports both numbers (`target=` and
+`ac_applied=`, with the offset in force), so a mismatch between what you asked
+for and what the device got is visible without digging through history.
+
+Two rounding facts worth knowing:
+
+- The manual target helpers are `mode: box`, and Home Assistant does not enforce
+  `step` in box mode. An off-grid value like 24.8 is accepted and then snapped by
+  the template, so what you type is not always what the device holds. This is why
+  eval 027 reports `bedroomb_manual_target_temperature=24.8` as off-step.
+- The snap uses Jinja's `round(0)`, matching the comfort loop's
+  `dynamic_setpoint`. Exact 0.25 midpoints resolve to the nearer whole degree.
+
 ## Night Fixed Cooling (BedroomS)
 
 BedroomS-only. On summer nights, the normal proportional comfort-band cycling

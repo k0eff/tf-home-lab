@@ -1207,7 +1207,7 @@ resource "homeassistant_automation" "livingr_manual_override" {
                         entity_id = "climate.hol_2"
                       }
                       data = {
-                        temperature = "{{ states('input_number.livingr_manual_target_temperature') | float(24) }}"
+                        temperature = "{% set manual_target = states('input_number.livingr_manual_target_temperature') | float(24) %}\n{% set cooling = is_state('input_select.livingr_manual_hvac_mode', 'cool') %}\n{% set calibration_offset = (states('input_number.livingr_manual_ac_calibration_offset') | float(0)) if cooling else 0 %}\n{{ [16, [31, (((manual_target + calibration_offset) * 2) | round(0)) / 2] | min] | max }}"
                       }
                     },
                     {
@@ -1236,7 +1236,7 @@ resource "homeassistant_automation" "livingr_manual_override" {
               service = "logbook.log"
               data = {
                 name      = "[TEST] LivingR manual override"
-                message   = "Applied manual override: mode={{ states('input_select.livingr_manual_hvac_mode') }}, target={{ states('input_number.livingr_manual_target_temperature') }}, fan={{ states('input_select.livingr_manual_fan_mode') }}, swing={{ states('input_select.livingr_manual_swing_mode') }}, until={{ states('input_datetime.livingr_manual_override_until') }}"
+                message   = "Applied manual override: mode={{ states('input_select.livingr_manual_hvac_mode') }}, target={{ states('input_number.livingr_manual_target_temperature') }}, ac_applied={% set manual_target = states('input_number.livingr_manual_target_temperature') | float(24) %}{% set cooling = is_state('input_select.livingr_manual_hvac_mode', 'cool') %}{% set calibration_offset = (states('input_number.livingr_manual_ac_calibration_offset') | float(0)) if cooling else 0 %}{{ [16, [31, (((manual_target + calibration_offset) * 2) | round(0)) / 2] | min] | max }} (offset {{ calibration_offset if calibration_offset is defined else 'n/a' }}), fan={{ states('input_select.livingr_manual_fan_mode') }}, swing={{ states('input_select.livingr_manual_swing_mode') }}, until={{ states('input_datetime.livingr_manual_override_until') }}"
                 entity_id = "climate.hol_2"
               }
             }
@@ -2228,7 +2228,7 @@ resource "homeassistant_automation" "bedroomb_manual_override" {
                         entity_id = "climate.v357_spalniag_2"
                       }
                       data = {
-                        temperature = "{{ states('input_number.bedroomb_manual_target_temperature') | float(24) }}"
+                        temperature = "{% set manual_target = states('input_number.bedroomb_manual_target_temperature') | float(24) %}\n{% set cooling = is_state('input_select.bedroomb_manual_hvac_mode', 'cool') %}\n{% set calibration_offset = (states('input_number.bedroomb_manual_ac_calibration_offset') | float(0)) if cooling else 0 %}\n{{ [16, [31, (((manual_target + calibration_offset) * 2) | round(0)) / 2] | min] | max }}"
                       }
                     },
                     {
@@ -2257,7 +2257,7 @@ resource "homeassistant_automation" "bedroomb_manual_override" {
               service = "logbook.log"
               data = {
                 name      = "[TEST] BedroomB manual override"
-                message   = "Applied manual override: mode={{ states('input_select.bedroomb_manual_hvac_mode') }}, target={{ states('input_number.bedroomb_manual_target_temperature') }}, fan={{ states('input_select.bedroomb_manual_fan_mode') }}, swing={{ states('input_select.bedroomb_manual_swing_mode') }}, until={{ states('input_datetime.bedroomb_manual_override_until') }}"
+                message   = "Applied manual override: mode={{ states('input_select.bedroomb_manual_hvac_mode') }}, target={{ states('input_number.bedroomb_manual_target_temperature') }}, ac_applied={% set manual_target = states('input_number.bedroomb_manual_target_temperature') | float(24) %}{% set cooling = is_state('input_select.bedroomb_manual_hvac_mode', 'cool') %}{% set calibration_offset = (states('input_number.bedroomb_manual_ac_calibration_offset') | float(0)) if cooling else 0 %}{{ [16, [31, (((manual_target + calibration_offset) * 2) | round(0)) / 2] | min] | max }} (offset {{ calibration_offset if calibration_offset is defined else 'n/a' }}), fan={{ states('input_select.bedroomb_manual_fan_mode') }}, swing={{ states('input_select.bedroomb_manual_swing_mode') }}, until={{ states('input_datetime.bedroomb_manual_override_until') }}"
                 entity_id = "climate.v357_spalniag_2"
               }
             }
@@ -6473,7 +6473,7 @@ resource "homeassistant_automation" "test_aircon_bedrooms_manual_override" {
                         "entity_id" = "climate.v537_spalniam_2"
                       }
                       "data" = {
-                        "temperature" = "{{ states('input_number.bedrooms_manual_target_temperature') | float(24) }}"
+                        "temperature" = "{% set manual_target = states('input_number.bedrooms_manual_target_temperature') | float(24) %}\n{% set cooling = is_state('input_select.bedrooms_manual_hvac_mode', 'cool') %}\n{% set calibration_offset = (states('input_number.bedrooms_manual_ac_calibration_offset') | float(0)) if cooling else 0 %}\n{{ [16, [31, (((manual_target + calibration_offset) * 2) | round(0)) / 2] | min] | max }}"
                       }
                     },
                     {
@@ -6502,7 +6502,7 @@ resource "homeassistant_automation" "test_aircon_bedrooms_manual_override" {
               "service" = "logbook.log"
               "data" = {
                 "name" = "[TEST] BedroomS manual override"
-                "message" = "Applied manual override: mode={{ states('input_select.bedrooms_manual_hvac_mode') }}, target={{ states('input_number.bedrooms_manual_target_temperature') }}, fan={{ states('input_select.bedrooms_manual_fan_mode') }}, swing={{ states('input_select.bedrooms_manual_swing_mode') }}, until={{ states('input_datetime.bedrooms_manual_override_until') }}"
+                "message" = "Applied manual override: mode={{ states('input_select.bedrooms_manual_hvac_mode') }}, target={{ states('input_number.bedrooms_manual_target_temperature') }}, ac_applied={% set manual_target = states('input_number.bedrooms_manual_target_temperature') | float(24) %}{% set cooling = is_state('input_select.bedrooms_manual_hvac_mode', 'cool') %}{% set calibration_offset = (states('input_number.bedrooms_manual_ac_calibration_offset') | float(0)) if cooling else 0 %}{{ [16, [31, (((manual_target + calibration_offset) * 2) | round(0)) / 2] | min] | max }} (offset {{ calibration_offset if calibration_offset is defined else 'n/a' }}), fan={{ states('input_select.bedrooms_manual_fan_mode') }}, swing={{ states('input_select.bedrooms_manual_swing_mode') }}, until={{ states('input_datetime.bedrooms_manual_override_until') }}"
                 "entity_id" = "climate.v537_spalniam_2"
               }
             }

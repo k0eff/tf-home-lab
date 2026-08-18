@@ -1,6 +1,6 @@
 {
   "generated_by": "tools/home-assistant-live/helpers_sync.js --export",
-  "helper_count": 151,
+  "helper_count": 154,
   "helpers": {
     "input_boolean.bedroomb_allow_away_saving": {
       "name": "BedroomB Allow Away Saving",
@@ -378,6 +378,16 @@
       "unit_of_measurement": "°C",
       "value": "24.4"
     },
+    "input_number.bedroomb_manual_ac_calibration_offset": {
+      "name": "BedroomB Manual AC Calibration Offset",
+      "icon": "mdi:target-variant",
+      "min": -3,
+      "max": 5,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "1.0"
+    },
     "input_number.bedroomb_manual_target_temperature": {
       "name": "BedroomB Manual Target Temperature",
       "min": 16,
@@ -644,6 +654,16 @@
       "mode": "box",
       "unit_of_measurement": "°C",
       "value": "24.5"
+    },
+    "input_number.bedrooms_manual_ac_calibration_offset": {
+      "name": "BedroomS Manual AC Calibration Offset",
+      "icon": "mdi:target-variant",
+      "min": -3,
+      "max": 5,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "0.0"
     },
     "input_number.bedrooms_manual_target_temperature": {
       "name": "BedroomS Manual Target Temperature",
@@ -915,6 +935,16 @@
       "mode": "box",
       "unit_of_measurement": "°C",
       "value": "23.9"
+    },
+    "input_number.livingr_manual_ac_calibration_offset": {
+      "name": "LivingR Manual AC Calibration Offset",
+      "icon": "mdi:target-variant",
+      "min": -3,
+      "max": 5,
+      "step": 0.1,
+      "mode": "box",
+      "unit_of_measurement": "°C",
+      "value": "0.0"
     },
     "input_number.livingr_manual_target_temperature": {
       "name": "LivingR Manual Target Temperature",
