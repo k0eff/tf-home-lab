@@ -42,8 +42,39 @@ proxmox_virtual_machines = {
         vmid = 700
         target_node = "proxmox"
         clone = "vm200"
-        memory = 16384
-        balloon = 16384
+        # 16 -> 32 GB on the owner's instruction, 2026-09-06: raise it to 32,
+        # the host has 64 and 24 are in use. (His words verbatim are in
+        # imotbgScraper2026/tasks/T-942.json, which is where the ledger
+        # convention keeps them; code comments here stay in English.)
+        #
+        # WHY: vm700 carries the whole imot2026 estate — ~24 containers, a
+        # single-node Kafka and the production Mongo. Measured 2026-09-05:
+        # 15,993 MB total with only 527 MB free, 2,559 MB already in swap, and
+        # mongod itself holding ~400 MB of that swap. imot2026-mongo was
+        # CFS-throttled in 45% of scheduler periods and read 34 TB back into a
+        # 512 MB WiredTiger cache over 127 hours. T-942 raises that cache to
+        # 4.5 GB and the container limit to 6 GB, which does not fit
+        # comfortably in 16 GB beside everything else — this is the headroom
+        # that makes that change safe rather than merely possible.
+        #
+        # THE ARITHMETIC. Ceilings sum to more than the host has; floors do
+        # not, and the floors are what actually bind.
+        #
+        #   ceilings  49 -> 65 GB   against 64 GB physical
+        #   floors    32.8 -> 35.3 GB (this VM's 32768, pinned, plus 512 each
+        #                              for the other five)
+        #
+        # Every other VM here sets `balloon = 512`, so the hypervisor can
+        # reclaim from them under pressure. THIS one sets balloon == memory,
+        # which pins it: a database must not have memory taken back underneath
+        # it while WiredTiger believes it holds a 4.5 GB cache. That asymmetry
+        # is the whole design — the ops box is guaranteed, the rest flex.
+        #
+        # So the over-commit at the ceiling is real but not the number to watch.
+        # If the host does come under pressure, the lever is the other five VMs'
+        # balloon floors, not this VM's ceiling.
+        memory = 32768
+        balloon = 32768
         sockets = 1
         cores = 4
         vcpus = 4
