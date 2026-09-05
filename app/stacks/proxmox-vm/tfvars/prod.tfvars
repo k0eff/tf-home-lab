@@ -76,8 +76,21 @@ proxmox_virtual_machines = {
         memory = 32768
         balloon = 32768
         sockets = 1
-        cores = 4
-        vcpus = 4
+        # 4 -> 5 vCPUs on the owner's instruction, 2026-09-06, in the same
+        # reboot as the memory change rather than a second one.
+        #
+        # This is what makes docker-compose.yml.j2's `cpus: "4.0"` for
+        # imot2026-mongo a limit again instead of the whole machine. At 4 cores
+        # a mongod allowed 4.0 could take every core and starve Kafka and the
+        # twenty app containers; at 5 it leaves one, which is the difference
+        # between a cap and a fiction. The two numbers are coupled — if this
+        # drops back to 4, mongo's limit has to drop with it.
+        #
+        # vCPU over-commit across the estate goes 12 -> 13 and is not the same
+        # class of risk as the memory over-commit above: the hypervisor time-
+        # slices CPU, it cannot time-slice RAM.
+        cores = 5
+        vcpus = 5
         onboot = true
         ipconfig0 = "ip=192.168.31.152/24,gw=192.168.31.1"
         ciuser = "<%= ENV['linux_user'] %>"
