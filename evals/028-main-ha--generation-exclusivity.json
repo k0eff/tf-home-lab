@@ -22,7 +22,7 @@
   "validation": {
     "type": "functional_test",
     "script": "tools/home-assistant-live/validate_logic.js --eval 028",
-    "result": "3/5 checks passed against the live instance. FAILING: C2 - entities commanded by more than one enabled generation: 3 -> climate.hol_2 {TEST:2,V2:5} | climate.v357_spalniag_2 {TEST:2,V2:2} | climate.v537_spalniam_2 {V2:2,TEST:2} | C4 - automations whose generation differs between main.tf and live: 39 -> e.g. aircon_bedroomb_flap_door_sensor code='PLAIN' live='OLD', aircon_bedrooms_fan_high_no_motion code='PLAIN' live='OLD', aircon_bedrooms_fan_mid_motion code='PLAIN' live='OLD'",
+    "result": "3/5 checks passed against the live instance. FAILING: C2 - entities commanded by more than one enabled generation: 3 -> climate.hol_2 {TEST:2,V2:5} | climate.v357_spalniag_2 {TEST:2,V2:2} | climate.v537_spalniam_2 {V2:2,TEST:2} | C4 - automations whose generation differs between main.tf and live: 34 -> e.g. aircon_bedroomb_flap_door_sensor code='PLAIN' live='OLD', aircon_bedrooms_fan_high_no_motion code='PLAIN' live='OLD', aircon_bedrooms_fan_mid_motion code='PLAIN' live='OLD'",
     "checks": [
       "C1: climate units under active command are found (the check is not vacuous)",
       "C2: no climate unit is commanded by more than one enabled generation",
@@ -34,8 +34,8 @@
       "C1 PASS: climate entities under active command: 3",
       "C2 FAIL: entities commanded by more than one enabled generation: 3 -> climate.hol_2 {TEST:2,V2:5} | climate.v357_spalniag_2 {TEST:2,V2:2} | climate.v537_spalniam_2 {V2:2,TEST:2}",
       "C3 PASS: [OLD] generation automations still enabled: 0",
-      "C4 FAIL: automations whose generation differs between main.tf and live: 39 -> e.g. aircon_bedroomb_flap_door_sensor code='PLAIN' live='OLD', aircon_bedrooms_fan_high_no_motion code='PLAIN' live='OLD', aircon_bedrooms_fan_mid_motion code='PLAIN' live='OLD'",
-      "C5 PASS: override pairs observed in 7 days (same unit, two values within 30s): 0/409 setpoint changes"
+      "C4 FAIL: automations whose generation differs between main.tf and live: 34 -> e.g. aircon_bedroomb_flap_door_sensor code='PLAIN' live='OLD', aircon_bedrooms_fan_high_no_motion code='PLAIN' live='OLD', aircon_bedrooms_fan_mid_motion code='PLAIN' live='OLD'",
+      "C5 PASS: override pairs observed in 7 days (same unit, two values within 30s): 0/306 setpoint changes"
     ]
   },
   "status": "fail",

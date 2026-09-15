@@ -21,14 +21,14 @@
   "validation": {
     "type": "functional_test",
     "script": "tools/home-assistant-live/validate_logic.js --eval 023",
-    "result": "3/3 checks passed against the live instance. trigger.id references found: 21 across 179 triggers branches keyed on an undefined trigger id: 0 duplicate trigger ids within one automation: 0",
+    "result": "3/3 checks passed against the live instance. trigger.id references found: 22 across 180 triggers branches keyed on an undefined trigger id: 0 duplicate trigger ids within one automation: 0",
     "checks": [
       "C1: trigger.id references are found at all (the check is not vacuous)",
       "C2: no branch is keyed on a trigger id that is never defined",
       "C3: no automation defines the same trigger id twice"
     ],
     "measured": [
-      "C1 PASS: trigger.id references found: 21 across 179 triggers",
+      "C1 PASS: trigger.id references found: 22 across 180 triggers",
       "C2 PASS: branches keyed on an undefined trigger id: 0",
       "C3 PASS: duplicate trigger ids within one automation: 0"
     ]

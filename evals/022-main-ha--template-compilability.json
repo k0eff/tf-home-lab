@@ -22,15 +22,15 @@
   "validation": {
     "type": "functional_test",
     "script": "tools/home-assistant-live/validate_logic.js --eval 022",
-    "result": "3/3 checks passed against the live instance. templates discovered: 248, renderable standalone: 221, needing run context: 27 templates failing to render: 0/221 top-level condition templates not rendering to a boolean: 0/52",
+    "result": "3/3 checks passed against the live instance. templates discovered: 250, renderable standalone: 223, needing run context: 27 templates failing to render: 0/223 top-level condition templates not rendering to a boolean: 0/52",
     "checks": [
       "C1: templates discovered, and how many need run context",
       "C2: every standalone-renderable template returns HTTP 200",
       "C3: every top-level condition template renders to a boolean"
     ],
     "measured": [
-      "C1 PASS: templates discovered: 248, renderable standalone: 221, needing run context: 27",
-      "C2 PASS: templates failing to render: 0/221",
+      "C1 PASS: templates discovered: 250, renderable standalone: 223, needing run context: 27",
+      "C2 PASS: templates failing to render: 0/223",
       "C3 PASS: top-level condition templates not rendering to a boolean: 0/52"
     ]
   },

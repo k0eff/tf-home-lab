@@ -1,0 +1,40 @@
+{
+  "id": "036",
+  "branch": "main",
+  "name": "ha--automation-room-naming-convention",
+  "category": "ha",
+  "description": "Owner asked that automations for the same physical room stop using different spellings of the room's name. Survey of all 98 homeassistant_automation resources found the living room referred to as LivingR (24x, dominant), Hol (9x), Living R with a space (2x), and living_r (3x); BedroomB referred to as BedroomB/Bedroom B (20x, dominant) vs SpalniaG (3x); BedroomS as BedroomS (13x, dominant) vs Spalniam (2x); the hallway as Entry (4x, dominant) vs Antre (1x). Kitchen (Kuhnia) and Bathroom (Bania) already had a single consistent spelling and were left alone. Picked each room's already-dominant spelling as canonical rather than inventing a new one. Also found and corrected a real mislabeling, not just a style variant: resource aircon_living_r_flap_down_v2 was named for LivingR but its device_id/entity_id (climate.v357_spalniag) and its own alias text ('Bedroom B') both show it actually controls BedroomB - renamed to aircon_bedroomb_flap_vane_down_v2 to match its V2 successor's already-correct name. Separately discovered (via eval 018/028 re-run) that 5 of the touched live automations already carried an '[OLD] ' generation prefix that main.tf's alias text had never captured - preserved that prefix live and backported it into main.tf instead of silently dropping it.",
+  "implementation": {
+    "files": [
+      "app/stacks/home-assistant/main.tf",
+      "app/stacks/home-assistant/import.tf",
+      "tools/home-assistant-live/apply_room_naming_alias_fixes.js",
+      "tools/home-assistant-live/README.md"
+    ],
+    "changes": [
+      "Renamed 19 homeassistant_automation resource labels in main.tf (and the matching `to =` address in import.tf, same numeric import id, so import bijection per eval 019 is unaffected) so every resource name uses the room's dominant token: hol/living_r/'living r' -> livingr, spalniag/'bedroom b'/bedroom_b -> bedroomb, spalniam -> bedrooms, antre -> entry",
+      "Of those 19, corrected alias text (the live-visible friendly name) for 10 where the alias itself still said the minority room word or had inconsistent spacing ('Bedroom B' -> 'BedroomB', 'Living R' -> 'LivingR', 'Hol' -> 'LivingR' in 5 cases including the mislabeled flap automation)",
+      "Applied the same 10 alias corrections live via tools/home-assistant-live/apply_room_naming_alias_fixes.js (GET config, substring-replace only the room token, POST config, automation/reload) - script does substring replacement on whatever alias is already live so any existing generation prefix is preserved, not overwritten",
+      "Backported the discovered '[OLD] ' live prefix into main.tf for the 5 resources where it was missing, instead of leaving new code/live drift behind",
+      "Re-ran tools/home-assistant-live/refresh_logic_eval_results.js (all 12 logic-eval suites) so evals 018/020-029 reflect current measured state under the new resource names",
+      "No entity_id changed anywhere - HA does not rename an automation's entity_id when its alias is patched after creation, and this task never touched entity_id, so no dashboard, script, or other automation reference could break",
+      "grep across tf-home-lab (main.tf/import.tf/tools/*.js/*.json) confirmed no other file referenced any of the 19 old resource names by name; only import.tf and evals/018 & 028's stored 'measured' text did, both updated"
+    ]
+  },
+  "validation": {
+    "checks": [
+      "python3 regex scan of all 98 `resource \"homeassistant_automation\"` blocks: hol/living_r/'living r'/spalniag/'bedroom b'/bedroom_b/spalniam/antre no longer appear in any resource name or alias, except where they are substrings of an already-correct live entity_id (e.g. climate.v357_spalniag, binary_sensor.motion04spalniam) which this task does not touch",
+      "terraform HCL still parses after the edits: `make plan` (sourced protected/main.sh prod home-assistant) fails at exactly the same pre-existing provider.tf host_url/bearer_token argument error as before any edit in this task - no new parse error introduced (that provider bug is pre-existing and out of scope, unrelated to naming)",
+      "Fresh independent GET of all 10 live-patched automation configs after automation/reload shows the corrected alias with prefix intact, e.g. id 169144171139299 -> '[V2] Light-LivingR-turn-off', id 1691441711392 -> '[OLD] Light-LivingR-turn-off'",
+      "eval 018 (code<->live parity) re-run: alias mismatches dropped 39 -> 34, fully-identical resources rose 53/98 -> 57/98, no new mismatch category introduced by this change",
+      "eval 028 (generation exclusivity) re-run: C4 'generation differs between main.tf and live' dropped 39 -> 34, consistent with the 5 '[OLD]' backports; C2/C3 unaffected",
+      "eval 019 (import bijection) unchanged pass/fail state - confirms every renamed resource's import.tf `to =` address still resolves 1:1",
+      "git grep across the repo for each of the 19 old resource-name strings, excluding main.tf/import.tf (already updated) and evals/018 & 028 (refreshed): zero remaining references"
+    ]
+  },
+  "status": "pass",
+  "notes": [
+    "34 remaining alias/generation mismatches (eval 018 C3, eval 028 C4) are pre-existing drift unrelated to room naming - main.tf is missing the live '[OLD]'/'[V2]'/'[TEST]' generation prefix on ~34 other resources this task did not touch. Flagged as a separate follow-up, not fixed here to keep this task's blast radius to room-name tokens only.",
+      "BedroomS's underlying naming (a single specific bedroom, plural-looking spelling) was left as-is - it was already the dominant, internally consistent spelling across the repo and the owner's ask was about room-name spelling collisions between automations, not about renaming to a less ambiguous scheme."
+  ]
+}

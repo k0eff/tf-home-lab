@@ -20,7 +20,7 @@
   "validation": {
     "type": "functional_test",
     "script": "tools/home-assistant-live/validate_logic.js --eval 026",
-    "result": "6/6 checks passed against the live instance. bedroomb: dynamic_setpoint assignments=30, clamped to [16,31]=30 bedrooms: dynamic_setpoint assignments=31, clamped to [16,31]=31 livingr: dynamic_setpoint assignments=30, clamped to [16,31]=30 climate.v357_spalniag_2 advertises min_temp=10 max_temp=31, clamp 16..31 fits inside it climate.v537_spalniam_2 advertises min_temp=16 max_temp=31, clamp 16..31 fits inside it climate.hol_2 advertises min_temp=10 max_temp=31, clamp 16..31 fits inside it",
+    "result": "6/6 checks passed against the live instance. bedroomb: dynamic_setpoint assignments=30, clamped to [16,31]=30 bedrooms: dynamic_setpoint assignments=32, clamped to [16,31]=32 livingr: dynamic_setpoint assignments=30, clamped to [16,31]=30 climate.v357_spalniag_2 advertises min_temp=10 max_temp=31, clamp 16..31 fits inside it climate.v537_spalniam_2 advertises min_temp=10 max_temp=31, clamp 16..31 fits inside it climate.hol_2 advertises min_temp=10 max_temp=31, clamp 16..31 fits inside it",
     "checks": [
       "C-bedroomb: every BedroomB dynamic_setpoint assignment is clamped to [16,31]",
       "C-bedrooms: every BedroomS dynamic_setpoint assignment is clamped to [16,31]",
@@ -31,10 +31,10 @@
     ],
     "measured": [
       "C-bedroomb PASS: bedroomb: dynamic_setpoint assignments=30, clamped to [16,31]=30",
-      "C-bedrooms PASS: bedrooms: dynamic_setpoint assignments=31, clamped to [16,31]=31",
+      "C-bedrooms PASS: bedrooms: dynamic_setpoint assignments=32, clamped to [16,31]=32",
       "C-livingr PASS: livingr: dynamic_setpoint assignments=30, clamped to [16,31]=30",
       "C-range-bedroomb PASS: climate.v357_spalniag_2 advertises min_temp=10 max_temp=31, clamp 16..31 fits inside it",
-      "C-range-bedrooms PASS: climate.v537_spalniam_2 advertises min_temp=16 max_temp=31, clamp 16..31 fits inside it",
+      "C-range-bedrooms PASS: climate.v537_spalniam_2 advertises min_temp=10 max_temp=31, clamp 16..31 fits inside it",
       "C-range-livingr PASS: climate.hol_2 advertises min_temp=10 max_temp=31, clamp 16..31 fits inside it"
     ]
   },

@@ -24,12 +24,12 @@ import {
 }
 
 import {
-  to = homeassistant_automation.aircon_hol_fan_high_no_motion
+  to = homeassistant_automation.aircon_livingr_fan_high_no_motion
   id = "1699480104498"
 }
 
 import {
-  to = homeassistant_automation.aircon_hol_fan_mid_motion
+  to = homeassistant_automation.aircon_livingr_fan_mid_motion
   id = "1699480176412"
 }
 
@@ -39,12 +39,12 @@ import {
 }
 
 import {
-  to = homeassistant_automation.aircon_living_r_flap_down_v2
+  to = homeassistant_automation.aircon_bedroomb_flap_vane_down_v2
   id = "1685485075161"
 }
 
 import {
-  to = homeassistant_automation.aircon_living_r_flap_down_v2_2
+  to = homeassistant_automation.aircon_livingr_flap_down_v2_2
   id = "1685485186799"
 }
 
@@ -74,12 +74,12 @@ import {
 }
 
 import {
-  to = homeassistant_automation.aircon_night_spalniag
+  to = homeassistant_automation.aircon_night_bedroomb_summer
   id = "1690839162748"
 }
 
 import {
-  to = homeassistant_automation.aircon_night_spalniam
+  to = homeassistant_automation.aircon_night_bedrooms_summer
   id = "1690839231313"
 }
 
@@ -94,22 +94,22 @@ import {
 }
 
 import {
-  to = homeassistant_automation.antre_motion
+  to = homeassistant_automation.light_entry_motion_turn_on_motion
   id = "1691424901388"
 }
 
 import {
-  to = homeassistant_automation.hol
+  to = homeassistant_automation.aircon_livingr_morning_set_temp_summer
   id = "1689285261436"
 }
 
 import {
-  to = homeassistant_automation.hol_hidden_light_off
+  to = homeassistant_automation.livingr_hidden_light_off
   id = "1735256615192"
 }
 
 import {
-  to = homeassistant_automation.hol_sunset_hidden_light
+  to = homeassistant_automation.livingr_sunset_hidden_light
   id = "1735256531604"
 }
 
@@ -129,7 +129,7 @@ import {
 }
 
 import {
-  to = homeassistant_automation.light_hol_turn_off
+  to = homeassistant_automation.light_livingr_turn_off
   id = "1691441711392"
 }
 
@@ -144,7 +144,7 @@ import {
 }
 
 import {
-  to = homeassistant_automation.light_spalniag_turn_all_on_when_single_turned_on
+  to = homeassistant_automation.light_bedroomb_turn_all_on_when_single_turned_on
   id = "1736010037968"
 }
 
@@ -164,12 +164,12 @@ import {
 }
 
 import {
-  to = homeassistant_automation.spalniag_turn_all_off_when_single_turned_off
+  to = homeassistant_automation.light_bedroomb_turn_all_off_when_single_turned_off
   id = "1736010125417"
 }
 
 import {
-  to = homeassistant_automation.spalniam
+  to = homeassistant_automation.aircon_morning_bedrooms_summer
   id = "1689285293913"
 }
 
@@ -271,12 +271,12 @@ import {
 }
 
 import {
-  to = homeassistant_automation.v2_aircon_bedroom_b_flap_vane_down_v2
+  to = homeassistant_automation.v2_aircon_bedroomb_flap_vane_down_v2
   id = "168548507516199"
 }
 
 import {
-  to = homeassistant_automation.v2_aircon_living_r_flap_vane_down_v2_horiz_split
+  to = homeassistant_automation.v2_aircon_livingr_flap_vane_down_v2_horiz_split
   id = "168548518679999"
 }
 
@@ -336,12 +336,12 @@ import {
 }
 
 import {
-  to = homeassistant_automation.v2_hol_hidden_light_off
+  to = homeassistant_automation.v2_livingr_hidden_light_off
   id = "173525661519299"
 }
 
 import {
-  to = homeassistant_automation.v2_hol_hidden_light_on_sunset
+  to = homeassistant_automation.v2_livingr_hidden_light_on_sunset
   id = "173525653160499"
 }
 
@@ -361,7 +361,7 @@ import {
 }
 
 import {
-  to = homeassistant_automation.v2_light_hol_turn_off
+  to = homeassistant_automation.v2_light_livingr_turn_off
   id = "169144171139299"
 }
 

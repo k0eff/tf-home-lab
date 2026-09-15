@@ -21,7 +21,7 @@
   "validation": {
     "type": "functional_test",
     "script": "tools/home-assistant-live/validate_logic.js --eval 029",
-    "result": "5/5 checks passed against the live instance. bedroomb: stale_hours=true, last_moved=true, battery guard=true bedrooms: stale_hours=true, last_moved=true, battery guard=true livingr: stale_hours=true, last_moved=true, battery guard=true per-room staleness threshold helpers live: 3/3 sensors read by the enabled comfort bands that are past their own threshold: 0/10 (stalest sensor.venti_outside_temperature 2.90h of 5h)",
+    "result": "5/5 checks passed against the live instance. bedroomb: stale_hours=true, last_moved=true, battery guard=true bedrooms: stale_hours=true, last_moved=true, battery guard=true livingr: stale_hours=true, last_moved=true, battery guard=true per-room staleness threshold helpers live: 3/3 sensors read by the enabled comfort bands that are past their own threshold: 0/10 (stalest sensor.venti_outside_temperature 4.12h of 5h)",
     "checks": [
       "C-bedroomb: BedroomB's band still consults staleness, last-moved and battery",
       "C-bedrooms: BedroomS's band still consults staleness, last-moved and battery",
@@ -34,7 +34,7 @@
       "C-bedrooms PASS: bedrooms: stale_hours=true, last_moved=true, battery guard=true",
       "C-livingr PASS: livingr: stale_hours=true, last_moved=true, battery guard=true",
       "C-helpers PASS: per-room staleness threshold helpers live: 3/3",
-      "C-fresh PASS: sensors read by the enabled comfort bands that are past their own threshold: 0/10 (stalest sensor.venti_outside_temperature 2.90h of 5h)"
+      "C-fresh PASS: sensors read by the enabled comfort bands that are past their own threshold: 0/10 (stalest sensor.venti_outside_temperature 4.12h of 5h)"
     ]
   },
   "status": "pass",

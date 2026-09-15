@@ -21,7 +21,7 @@
   "validation": {
     "type": "functional_test",
     "script": "tools/home-assistant-live/validate_logic.js --eval 020",
-    "result": "5/5 checks passed against the live instance. string-style fields containing a double-escaped \\\\n: 0 escape round-trip: 322 ok, 0 lossy fields that do not parse as JSON: 0 multi-statement templates collapsed onto one line by a double-escape: 0 templates with real newlines: 114/248",
+    "result": "5/5 checks passed against the live instance. string-style fields containing a double-escaped \\\\n: 0 escape round-trip: 322 ok, 0 lossy fields that do not parse as JSON: 0 multi-statement templates collapsed onto one line by a double-escape: 0 templates with real newlines: 118/250",
     "checks": [
       "C1: no string-style field contains a double-escaped \\\\n",
       "C2: unescape then re-escape is byte-identical for every string-style field",
@@ -34,7 +34,7 @@
       "C2 PASS: escape round-trip: 322 ok, 0 lossy",
       "C3 PASS: fields that do not parse as JSON: 0",
       "C4 PASS: multi-statement templates collapsed onto one line by a double-escape: 0",
-      "C5 PASS: templates with real newlines: 114/248"
+      "C5 PASS: templates with real newlines: 118/250"
     ]
   },
   "status": "pass",

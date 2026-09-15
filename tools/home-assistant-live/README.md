@@ -118,6 +118,11 @@ launchctl kickstart -k gui/$(id -u)/com.krasi.ha-energy-table-refresh
 
 ### Apply / Patch scripts
 
+- `apply_room_naming_alias_fixes.js`
+  - normalizира room token-а в alias-а на 10 live automation-а към канoничното изписване за стаята (LivingR/BedroomB), запазвайки какъвто generation префикс ([OLD]/[V2]) вече стои live — token substring replace, не презаписване на целия alias
+  - writes: да
+  - subcommands: няма
+  - options: няма
 - `apply_hol_light_motion_timeout_2h.js`
   - patch-ва no-motion timeout-а на `[OLD]`/`[V2] Light-Hol-turn-off` (id `1691441711392` / `169144171139299`) от 30 минути на 2 часа
   - writes: да

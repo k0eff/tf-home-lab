@@ -21,7 +21,7 @@
   "validation": {
     "type": "functional_test",
     "script": "tools/home-assistant-live/validate_logic.js --eval 024",
-    "result": "6/6 checks passed against the live instance. suppression guard present on 3 proportional branches (expected >= 3) fixed branch reads night_fixed_cooling_target rather than a literal both entry triggers defined (19:30 clock + toggle turning on) helpers live: toggle=on, target=24.0 setpoint writes inside the night window excluding the 19:30 handover: 0 19:30 handovers observed: 2, landing on a value other than 24: 0",
+    "result": "4/6 checks passed against the live instance. FAILING: C5 - setpoint writes inside the night window excluding the 19:30 handover: 31 -> 22:31:30=24.5, 22:50:37=24, 03:18:03=24.5, 05:09:32=24, 05:21:04=24.5 | C6 - 19:30 handovers observed: 2, landing on a value other than 24: 2",
     "checks": [
       "C1: the suppression guard is present on all three proportional branches",
       "C2: the fixed branch reads night_fixed_cooling_target, not a hardcoded number",
@@ -31,15 +31,15 @@
       "C6: LIVE - every observed handover lands on the helper's value"
     ],
     "measured": [
-      "C1 PASS: suppression guard present on 3 proportional branches (expected >= 3)",
+      "C1 PASS: suppression guard (latch) present on 3 proportional branches (expected >= 3)",
       "C2 PASS: fixed branch reads night_fixed_cooling_target rather than a literal",
       "C3 PASS: both entry triggers defined (19:30 clock + toggle turning on)",
       "C4 PASS: helpers live: toggle=on, target=24.0",
-      "C5 PASS: setpoint writes inside the night window excluding the 19:30 handover: 0",
-      "C6 PASS: 19:30 handovers observed: 2, landing on a value other than 24: 0"
+      "C5 FAIL: setpoint writes inside the night window excluding the 19:30 handover: 31 -> 22:31:30=24.5, 22:50:37=24, 03:18:03=24.5, 05:09:32=24, 05:21:04=24.5",
+      "C6 FAIL: 19:30 handovers observed: 2, landing on a value other than 24: 2"
     ]
   },
-  "status": "pass",
+  "status": "fail",
   "incidents": [
     {
       "what": "The first behavioural measurement reported zero automation fires for the entire night window, which would have meant the whole loop was dead.",

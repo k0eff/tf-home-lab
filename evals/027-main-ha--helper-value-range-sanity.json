@@ -20,7 +20,7 @@
   "validation": {
     "type": "functional_test",
     "script": "tools/home-assistant-live/validate_logic.js --eval 027",
-    "result": "5/5 checks passed against the live instance. input_number helpers declared: 93 declared helpers absent live: 0 values outside their own range: 0 values not on their own step: 0 target helpers outside 15..32 C: 0",
+    "result": "5/5 checks passed against the live instance. input_number helpers declared: 96 declared helpers absent live: 0 values outside their own range: 0 values not on their own step: 0 target helpers outside 15..32 C: 0",
     "checks": [
       "C1: input_number helpers are declared at all",
       "C2: every declared helper exists live",
@@ -29,7 +29,7 @@
       "C5: no temperature target helper sits outside 15-32 C"
     ],
     "measured": [
-      "C1 PASS: input_number helpers declared: 93",
+      "C1 PASS: input_number helpers declared: 96",
       "C2 PASS: declared helpers absent live: 0",
       "C3 PASS: values outside their own range: 0",
       "C4 PASS: values not on their own step: 0",

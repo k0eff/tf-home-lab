@@ -21,7 +21,7 @@
   "validation": {
     "type": "functional_test",
     "script": "tools/home-assistant-live/validate_logic.js --eval 021",
-    "result": "2/4 checks passed against the live instance. FAILING: C1 - entities referenced by ENABLED automations: 206, missing live: 2 -> sensor.iphone_ssid, sensor.iphone_bssid | C2 - entities referenced only by DISABLED automations and absent live: 3 -> climate.v357_spalniag, climate.v537_spalniam, climate.hol",
+    "result": "2/4 checks passed against the live instance. FAILING: C1 - entities referenced by ENABLED automations: 210, missing live: 2 -> sensor.iphone_ssid, sensor.iphone_bssid | C2 - entities referenced only by DISABLED automations and absent live: 3 -> climate.v357_spalniag, climate.v537_spalniam, climate.hol",
     "checks": [
       "C1: every entity referenced by an ENABLED automation exists live",
       "C2: no entity referenced only by disabled automations is absent live (dead-code detector)",
@@ -29,7 +29,7 @@
       "C4: every temperature sensor feeding an enabled loop is available"
     ],
     "measured": [
-      "C1 FAIL: entities referenced by ENABLED automations: 206, missing live: 2 -> sensor.iphone_ssid, sensor.iphone_bssid",
+      "C1 FAIL: entities referenced by ENABLED automations: 210, missing live: 2 -> sensor.iphone_ssid, sensor.iphone_bssid",
       "C2 FAIL: entities referenced only by DISABLED automations and absent live: 3 -> climate.v357_spalniag, climate.v537_spalniam, climate.hol",
       "C3 PASS: climate entities commanded by enabled automations: 3, dead: 0",
       "C4 PASS: temperature sensors feeding enabled loops: 6, unavailable/unknown: 0"
