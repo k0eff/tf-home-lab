@@ -118,6 +118,11 @@ launchctl kickstart -k gui/$(id -u)/com.krasi.ha-energy-table-refresh
 
 ### Apply / Patch scripts
 
+- `apply_hol_light_motion_timeout_2h.js`
+  - patch-ва no-motion timeout-а на `[OLD]`/`[V2] Light-Hol-turn-off` (id `1691441711392` / `169144171139299`) от 30 минути на 2 часа
+  - writes: да
+  - subcommands: няма
+  - options: няма
 - `apply_climate_setup_templates_config_only.js`
   - patch-ва LivingR/BedroomB live comfort automation config-а със същата template логика като `sync_climate_setup_templates.js`, БЕЗ да пуска `automation.turn_on` — за случаите, когато automation-ите умишлено стоят изключени (напр. manual climate control) и искаме само коригираната логика да е staged
   - writes: да

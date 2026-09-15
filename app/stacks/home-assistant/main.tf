@@ -205,7 +205,7 @@ resource "homeassistant_automation" "light_entry_turn_off_motion" {
 resource "homeassistant_automation" "light_hol_turn_off" {
   alias       = "Light-Hol-turn-off"
   mode        = "single"
-  trigger     = "[{\"type\": \"no_motion\", \"platform\": \"device\", \"device_id\": \"9760dbf983194fdd33aea4553da75f35\", \"entity_id\": \"0ba7443acab61b6da15910aa07d009c1\", \"domain\": \"binary_sensor\", \"for\": {\"hours\": 0, \"minutes\": 30, \"seconds\": 0}}]"
+  trigger     = "[{\"type\": \"no_motion\", \"platform\": \"device\", \"device_id\": \"9760dbf983194fdd33aea4553da75f35\", \"entity_id\": \"0ba7443acab61b6da15910aa07d009c1\", \"domain\": \"binary_sensor\", \"for\": {\"hours\": 2, \"minutes\": 0, \"seconds\": 0}}]"
   condition   = "[{\"condition\": \"or\", \"conditions\": [{\"condition\": \"state\", \"entity_id\": \"switch.100110a66f\", \"state\": \"on\", \"for\": {\"hours\": 0, \"minutes\": 0, \"seconds\": 0}}, {\"condition\": \"state\", \"entity_id\": \"switch.1000f87bf9\", \"state\": \"on\", \"for\": {\"hours\": 0, \"minutes\": 0, \"seconds\": 0}}, {\"condition\": \"state\", \"entity_id\": \"switch.1000f87f30\", \"state\": \"on\", \"for\": {\"hours\": 0, \"minutes\": 0, \"seconds\": 0}}]}]"
   action      = "[{\"service\": \"light.turn_off\", \"data\": {}, \"target\": {\"entity_id\": [\"light.sonoff_100110a66f\", \"light.sonoff_1000f87f30\", \"light.sonoff_1000f87bf9\"]}}]"
 }
@@ -4024,8 +4024,8 @@ resource "homeassistant_automation" "v2_light_hol_turn_off" {
       "entity_id" = "0ba7443acab61b6da15910aa07d009c1"
       "domain" = "binary_sensor"
       "for" = {
-        "hours" = 0
-        "minutes" = 30
+        "hours" = 2
+        "minutes" = 0
         "seconds" = 0
       }
     }
