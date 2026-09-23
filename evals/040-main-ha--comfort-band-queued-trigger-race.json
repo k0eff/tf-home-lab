@@ -1,0 +1,39 @@
+{
+  "id": "040",
+  "branch": "main",
+  "name": "ha--comfort-band-queued-trigger-race",
+  "category": "ha",
+  "description": "All three comfort-band automations run in `mode: single` and carry a `time_pattern` trigger every 5 minutes (id periodic_check) alongside clock triggers at 00:30, 03:00, 06:00, 08:30 and, for BedroomS, 19:30. Every one of those clock times falls on a 5-minute boundary, so the periodic trigger and the clock trigger fire in the same second. In single mode the second run is dropped with 'Already running'. Which run survives is decided by microseconds, so any branch gated on a clock trigger's id fires on some nights and silently not on others. BedroomS night fixed cooling is exactly such a branch: its handover is gated on trigger id summer_night_fixed_cooling_start at 19:30:00. Home Assistant's system log shows 'BedroomS - room sensor comfort band: Already running' first at 2026-09-22 19:30:00, and bedrooms_fixed_cooling_engaged did not latch on either 2026-09-22 or 2026-09-23 - the proportional loop ran instead, which is the fluctuating-temperature symptom the owner has reported as a recurring regression. The same log shows LivingR dropping runs at 00:30:00 (count 8 by 2026-09-24 00:30) and BedroomB at 03:00:00. This race is intermittent by nature, which is consistent with a feature that works for a while and then 'regresses' without any code change.",
+  "implementation": {
+    "files": [
+      "tools/home-assistant-live/apply_comfort_band_queued_mode.js",
+      "app/stacks/home-assistant/main.tf"
+    ],
+    "changes": [
+      "mode single -> queued on the three comfort-band automations (LivingR 1770077000010, BedroomB 1770077000021, BedroomS 1770077000061). Simultaneous triggers now run one after another instead of one being discarded, so a clock-trigger run keeps its trigger id and its branch",
+      "Safety checked before the change: none of the three has a delay, wait_template or wait_for_trigger, so every run completes in seconds and the queue cannot grow; none writes to any entity that is also one of its own triggers, so queuing cannot create a feedback loop",
+      "No explicit max: the Terraform provider's homeassistant_automation resource has no max attribute (its top-level fields are alias, description, mode, trigger, condition, action), so a live-only max would be drift that main.tf cannot express and a future apply would silently reset. Home Assistant's default queue depth of 10 is used instead; with sub-second-to-seconds runs and no waits, depth is not a practical factor"
+    ]
+  },
+  "validation": {
+    "checks": [
+      "Live: all three comfort-band automations report mode queued with no max override",
+      "main.tf mirrors mode = \"queued\" for all three resources",
+      "No other field of the three automations changes",
+      "After the next 5-minute-aligned clock trigger, system_log shows no new 'Already running' entry for the three automations",
+      "BedroomS: at the next 19:30, bedrooms_fixed_cooling_engaged latches on (the handover run is no longer discarded)"
+    ],
+    "evidence": [
+      "Pre-change safety scan, all three: 0 delay, 0 wait_template, 0 wait_for_trigger; no written entity is also one of the automation's own triggers",
+      "Apply script: mode single -> queued for livingr/bedroomb/bedrooms, each re-read after save with every field other than mode byte-identical to the pre-save config",
+      "main.tf: `mode = \"queued\"` in all three resource blocks; logic_model.js reports code queued / live queued for each",
+      "system_log 'Already running' counts before/after the next 5-minute boundary (00:48:39 -> 00:50:20): LivingR 8 -> 8, BedroomS 5 -> 5, BedroomB 3 -> 3"
+    ]
+  },
+  "status": "pass",
+  "notes": [
+    "Field confirmation outstanding: the BedroomS 19:30 handover could not be observed under the new mode, because at 2026-09-23 20:18:20 a household member (context user of person.ema_yosifova) turned the BedroomS comfort automation off by hand via automation.turn_off and took manual control of the AC (cool 24.5 fan 2 at 20:18:42, later 24 and 24.5). Both reloads this evening (22:36:41 eval 039, 00:48:23 this change) preserved that off state; neither caused it. The automation was deliberately left off.",
+    "Likely trigger for the manual takeover: at 19:30:00 the race discarded the fixed-cooling handover, the proportional loop ran instead, and the pre-eval-039 abs latch armed the fan boost at the same second - fan 5 and setpoints down to 22.5 until 20:08.",
+    "The race also explains why eval 024 C6 reported handovers intermittently landing on a value other than the fixed target: whichever of the periodic and clock runs started first won."
+  ]
+}
