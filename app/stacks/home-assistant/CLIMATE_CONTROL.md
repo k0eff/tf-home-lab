@@ -168,6 +168,36 @@ Boost" entities card, so tuning does not require editing automation YAML -
 `was_away`/`away_ended_at` are shown for visibility into current state even
 though they're written by the automation, not meant for direct editing.
 
+## Night Air Clean
+
+Between `input_datetime.<room>_air_clean_start` and `_air_clean_end` (03:00-06:00
+in all three rooms) the comfort loop forces the unit into `fan_only` at the
+room's boost fan speed. It does not cool - the setpoint is parked - it
+circulates. That is the intent: move the air while nobody is using the room.
+
+It is gated by `input_boolean.<room>_allow_night_air_clean`, a checkbox on each
+room's Tune view under "Night". Unchecked means the window does not exist: the
+03:00-06:00 span becomes ordinary sleep window and the unit stays parked off.
+
+Current state: BedroomB **off** (owner request, 2026-09-23 - fan 5 over a
+sleeping person), LivingR and BedroomS on.
+
+Two things to know before touching this:
+
+- **The gate is on the `night_air_clean_window` variable, not on the air-clean
+  branch.** The branches that park the unit off require `not
+  night_air_clean_window`, so gating only the air-clean branch would leave
+  whatever ran at 02:59 stuck until 06:00. Gating the variable is what makes
+  "nothing at night" actually mean nothing.
+- **Equal start and end times do not disable the window - they enable it
+  permanently.** The formula falls into its overnight-wrap branch,
+  `(now >= start or now < end)`, which is always true when start equals end.
+  Use the checkbox, never equal times.
+
+The set-line is byte-identical across all three rooms and appears 97 times in
+`main.tf` (LivingR 30, BedroomB 35, BedroomS 32). Any edit to it must be scoped
+to one room's resource block - the same hazard eval 014 documented.
+
 ## Manual Override
 
 Manual override is a hard ownership mode. While it is active and its expiry time

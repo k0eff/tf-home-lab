@@ -1,11 +1,16 @@
 {
   "generated_by": "tools/home-assistant-live/helpers_sync.js --export",
-  "helper_count": 154,
+  "helper_count": 157,
   "helpers": {
     "input_boolean.bedroomb_allow_away_saving": {
       "name": "BedroomB Allow Away Saving",
       "icon": "mdi:home-export-outline",
       "value": "on"
+    },
+    "input_boolean.bedroomb_allow_night_air_clean": {
+      "name": "BedroomB Allow Night Air Clean",
+      "icon": "mdi:weather-night-partly-cloudy",
+      "value": "off"
     },
     "input_boolean.bedroomb_fan_boost_active": {
       "name": "BedroomB Fan Boost Active",
@@ -30,6 +35,11 @@
     "input_boolean.bedrooms_allow_away_saving": {
       "name": "BedroomS Allow Away Saving",
       "icon": "mdi:home-export-outline",
+      "value": "on"
+    },
+    "input_boolean.bedrooms_allow_night_air_clean": {
+      "name": "BedroomS Allow Night Air Clean",
+      "icon": "mdi:weather-night-partly-cloudy",
       "value": "on"
     },
     "input_boolean.bedrooms_allow_night_cooling": {
@@ -75,6 +85,11 @@
     "input_boolean.livingr_allow_away_saving": {
       "name": "LivingR Allow Away Saving",
       "icon": "mdi:home-export-outline",
+      "value": "on"
+    },
+    "input_boolean.livingr_allow_night_air_clean": {
+      "name": "LivingR Allow Night Air Clean",
+      "icon": "mdi:weather-night-partly-cloudy",
       "value": "on"
     },
     "input_boolean.livingr_allow_night_cooling": {

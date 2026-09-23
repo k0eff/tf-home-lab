@@ -1,0 +1,51 @@
+{
+  "id": "038",
+  "branch": "main",
+  "name": "ha--night-air-clean-toggle",
+  "category": "ha",
+  "description": "The night air-clean branch forces the unit into fan_only at the room's boost fan speed for the whole air-clean window, unconditionally. Its condition is `{{ night_air_clean_window and (state != 'fan_only' or fan_mode != '5') }}` - no season gate, no allow_night_cooling gate, no enable toggle of any kind. LivingR and BedroomB both run it 03:00-06:00; BedroomS too. Reported 2026-09-23: the owner is woken by BedroomB blowing hard in the middle of the night and wants nothing running there at night at all. Live history confirms the mechanism and rules out the away/return-boost path: on 2026-09-21 and 2026-09-22 the unit sat at `fan_only | temperature 30 | fan 5` from 03:00 to 06:00 with bedroomb_was_away off and bedroomb_fan_boost_active off throughout, i.e. not cooling - target parked at 30 - but blowing at speed 5 over a sleeping person. No helper value can switch the window off: when air_clean_start equals air_clean_end the window formula falls into its wrap branch `(now >= start or now < end)`, which is always true, so equal times make air-clean run permanently rather than never.",
+  "implementation": {
+    "files": [
+      "tools/home-assistant-live/apply_night_air_clean_toggle.js",
+      "app/stacks/home-assistant/main.tf",
+      "app/stacks/home-assistant/helpers.json",
+      "app/stacks/home-assistant/CLIMATE_CONTROL.md",
+      "tools/home-assistant-live/my_dash_lovelace_config.json"
+    ],
+    "changes": [
+      "New helper per room: input_boolean.<room>_allow_night_air_clean, exposed as a checkbox on that room's dashboard Tune view because the owner asked for it as a dashboard checkbox, not a code constant",
+      "Initial state: bedroomb off (the reported complaint), livingr and bedrooms on, which reproduces today's behaviour for the two rooms nobody complained about",
+      "The gate is applied to the night_air_clean_window VARIABLE, not to the air-clean branch. Gating the branch would leave `not night_air_clean_window` false in branches 1 and 6, so anything already running at 02:59 would be stuck until 06:00. Gating the variable makes 03:00-06:00 an ordinary part of the sleep window, which parks the unit off - that is what 'nothing at night' means",
+      "The set-line is byte-identical across all three rooms and occurs 97 times in main.tf (livingr 30, bedroomb 35, bedrooms 32). Every edit is scoped to one room's resource block, per the hazard eval 014 documented when it backported a byte-identical predicate"
+    ]
+  },
+  "validation": {
+    "checks": [
+      "Live: each room's automation has exactly its own count of gated set-lines (livingr 30, bedroomb 35, bedrooms 32) and zero ungated ones",
+      "Blast radius: each room's gate entity appears only in that room's automation and in no other automation",
+      "Rendered at a synthetic 04:00 for BedroomB with the toggle off, night_air_clean_window is false; with it on, true",
+      "Rendered at a synthetic 04:00 for LivingR and BedroomS with their toggles on, night_air_clean_window is still true - today's behaviour preserved",
+      "With BedroomB's toggle off, the 03:00-06:00 span evaluates as plain sleep window, so the branch that parks the unit off is reachable",
+      "main.tf mirrors live for all three automations via logic_model.js canonical comparison",
+      "helpers.json round-trips and helper_count matches",
+      "The three checkboxes are present on the live dashboard and in my_dash_lovelace_config.json",
+      "Idempotency: apply script re-run is a clean no-op"
+    ],
+    "evidence": [
+      "Live counts after apply: livingr 30 gated / 0 ungated, bedroomb 35/0, bedrooms 32/0; no cross-room gate reference leaked into any of the three",
+      "Behavioural render at a synthetic 04:00 (air_clean 180-360, minutes_now 240): bedroomb toggle off -> night_air_clean_window false; livingr and bedrooms toggles on -> true",
+      "main.tf gated counts match live exactly: livingr 30/30, bedroomb 35/35, bedrooms 32/32, zero ungated survivors in the file",
+      "helpers_sync.js --check: 157 declared = 157 live, and none of the three new helpers appears in the drift list",
+      "Live dashboard read back through lovelace/config: all three Tune views have a Night card containing that room's toggle",
+      "Idempotency: both apply scripts re-run clean - 'already gated' x3 / 'no change - no-op'",
+      "validate_logic.js --all: failure set identical to before the change (018 3/8, 019 4/6, 021 2/4, 024 5/6, 025 1/3, 028 2/5, 029 4/5); 020/022/023/026/027 pass, so all 97 edited templates still compile and render"
+    ]
+  },
+  "status": "pass",
+  "notes": [
+    "Outstanding corroboration, not a blocker: the real 03:00-06:00 window has not run yet under the new gate. The deterministic render at a synthetic 04:00 proves the variable, and tonight's history is the field confirmation.",
+    "BedroomB still has no allow_night_cooling helper at all (livingr 30 references, bedrooms 32, bedroomb 0). That is a separate parity gap, reported to the owner and not closed here.",
+    "The dashboard snapshot tools/home-assistant-live/my_dash_lovelace_config.json was edited surgically rather than re-exported from live. A re-export produced a 2,247-line diff because the checked-in copy has drifted from live; resolving that drift is somebody else's slice, and sweeping it into this commit would have violated the 'only commit your own work' rule.",
+    "Both room automations LivingR and BedroomB still show an 'action' mismatch against main.tf in eval 018. That predates this change - both were already in eval 018's mismatch list - and the 97 gated set-lines themselves are byte-matched between code and live."
+  ]
+}
