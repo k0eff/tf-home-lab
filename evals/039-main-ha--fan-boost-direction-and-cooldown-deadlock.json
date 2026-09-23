@@ -1,0 +1,46 @@
+{
+  "id": "039",
+  "branch": "main",
+  "name": "ha--fan-boost-direction-and-cooldown-deadlock",
+  "category": "ha",
+  "description": "Completes eval 014 for LivingR and BedroomS. Eval 014 fixed three defects in BedroomB in July and closed with 'Scope is BedroomB only. LivingR and BedroomS carry defects identically and are deliberately left for a separate slice.' That slice was never done. On 2026-09-23 LivingR was found stranded in fan_only, blowing air into a room the owner called brutally cold, by exactly defects (1) and (3): the fan-boost latch arms on `(error | abs) >= fan_boost_threshold`, so a room far BELOW its summer target latches the boost as hard as one far above it; with the latch on, cooling_fan_mode resolves to the boost speed (5) while the unit sits at fan 2, and the only branch that turns the unit off after coil cool-down requires `fan_mode == cooling_fan_mode`, i.e. '2' == '5', which can never be true. Live proof: every other term of that branch was satisfied (air-clean window false, state fan_only, 1021 s elapsed against a 14 min cool-down); clearing the latch by hand was undone by the tracker within ~70 s; moving the target so |error| fell below the release margin released the latch and the unit went off on the next tick. The owner is in autumn now and September is still classified as summer, so the room sits below target all day - this strands on every cold day until fixed.",
+  "implementation": {
+    "files": [
+      "tools/home-assistant-live/apply_fan_boost_direction_and_cooldown_deadlock.js",
+      "app/stacks/home-assistant/main.tf"
+    ],
+    "changes": [
+      "Defect (1), both rooms: the latch ON and RELEASE conditions switch from `(error | abs)` to eval 014's season-aware `boost_error = error if climate_mode == 'summer' else (0 - error)`. Boost now arms only on the uncomfortable side of target in each season, which keeps eval 006's intent (winter undershoot still boosts) and removes the season-blind encoding of it. The release leg also releases when boost_error is none, so the latch cannot strand",
+      "Defect (3), both rooms: the fan-equality clause is removed from the 'turn off after coil cool-down' condition. The remaining clauses (not in air-clean window, state fan_only, cool-down elapsed) already express 'cooling is over'; the fan comparison added nothing but the deadlock",
+      "Byte-identical text to eval 014's BedroomB fix, so all three rooms converge on one encoding",
+      "Defect (2), the room/AC disagreement resolver `conflict_worst_case`, is present in LivingR (30 copies) and BedroomS (32 copies) but is NOT changed here. It selects which temperature counts as the room, a different behaviour from the stranding, and in BedroomB it was motivated by a measured ceiling-vs-bed stratification that has not been measured for the other two rooms",
+      "Stopgap unwound after validation: input_number.livingr_fan_boost_threshold 3.0 -> 1.0, its pre-incident value"
+    ]
+  },
+  "validation": {
+    "checks": [
+      "Live, LivingR and BedroomS: zero `(error | abs)` occurrences, two `{% set boost_error` definitions, zero fan-equality clauses - matching BedroomB",
+      "BedroomB unchanged by this change",
+      "Render with room 1.7 K below a summer target: boost_error condition false (previously true via abs) - the autumn case no longer arms the boost",
+      "Render with room 1.2 K above a summer target: boost_error condition true - summer boost still works",
+      "Render with room 1.2 K below a winter target: boost_error condition true - eval 006's winter-undershoot intent preserved",
+      "main.tf mirrors live for both rooms, scoped to each resource block",
+      "validate_logic.js --all: no new failures",
+      "After reverting livingr_fan_boost_threshold to 1.0, climate.hol_2 is not stranded in fan_only and the latch stays released while the room is below target"
+    ],
+    "evidence": [
+      "Live after apply: livingr and bedrooms each 0 '(error | abs)', 2 '{% set boost_error' definitions, 0 fan-equality clauses; bedroomb unchanged at 0 abs / 2 defs",
+      "Render matrix through /api/template, new vs old: room 1.7 K below summer target -> false (old abs: true, the stranding case); 1.2 K above summer -> true/true; 1.2 K below winter -> true/true (eval 006 winter intent kept); 1.2 K above winter -> false (old: true)",
+      "main.tf: both resource blocks patched in place; the edited tails of both boost templates are verbatim in main.tf for both rooms",
+      "Idempotency: re-run reports 'already applied - no-op' for both rooms",
+      "Stopgap unwound: input_number.livingr_fan_boost_threshold 3.0 -> 1.0. With target 25.3 and room 25.6, climate.hol_2 cools at fan 2 with the latch off (22:37-22:39) - the latch no longer arms, and cooling proceeds because the room is above the owner's stated 25.5 ceiling",
+      "validate_logic.js --all: 020/022/023/026/027/029 pass; 018/019/021/025/028 fail as before; 024 moved 5/6 -> 4/6 on its historical checks C5/C6, caused by tonight's 19:30 BedroomS handover, three hours before this change was applied at 22:36"
+    ]
+  },
+  "status": "pass",
+  "notes": [
+    "LivingR's two boost templates are not byte-identical to main.tf as a whole: live lacks a `{% set fan_boost_latch_on = ... %}` line that main.tf carries in those templates' setup blocks. This is pre-existing drift - the same gap apply_bedrooms_fan_boost_latch_setup_sync.js closed for BedroomS in August - and it is why LivingR sits in eval 018's action-mismatch list. Not caused or closed by this change.",
+    "Eval 014's defect (2), the conflict_worst_case resolver, remains in LivingR (30 copies) and BedroomS (32 copies). Deliberately untouched - see implementation.",
+    "Observed while validating, not caused by this change: on 2026-09-23 at 19:30 BedroomS night fixed cooling did not engage - bedrooms_fixed_cooling_engaged stayed off from 18:39 and the proportional loop cycled cool/fan_only/off at fan 5 then fan 2. Worth its own investigation."
+  ]
+}
