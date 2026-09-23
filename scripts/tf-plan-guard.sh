@@ -44,6 +44,9 @@ TS_ENV_ARG="${2:-prod}"
 [ -d "$REPO_ROOT/app/stacks/$STACK" ] || { echo "FATAL: no stack app/stacks/$STACK" >&2; exit 1; }
 [ -f "$REPO_ROOT/protected/main.sh" ] || { echo "FATAL: protected/ submodule not checked out" >&2; exit 1; }
 
+# terraspace is Ruby: with no UTF-8 locale in the environment it reads tfvars as US-ASCII and dies
+# on the first non-ASCII comment ("invalid byte sequence in US-ASCII", 2026-09-23).
+export LANG="${LANG:-en_US.UTF-8}" LC_ALL="${LC_ALL:-en_US.UTF-8}"
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 cd "$REPO_ROOT" || exit 1
 
