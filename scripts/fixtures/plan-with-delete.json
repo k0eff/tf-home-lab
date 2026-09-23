@@ -1,0 +1,5 @@
+{"format_version":"1.2","resource_changes":[
+ {"address":"homeassistant_automation.example_keep","change":{"actions":["no-op"]}},
+ {"address":"homeassistant_automation.example_update","change":{"actions":["update"]}},
+ {"address":"proxmox_vm_qemu.example_vm","change":{"actions":["delete","create"]},"action_reason":"replace_because_cannot_update"},
+ {"address":"homeassistant_automation.example_gone","change":{"actions":["delete"]}}]}
