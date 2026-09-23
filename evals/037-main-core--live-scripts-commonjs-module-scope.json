@@ -1,0 +1,38 @@
+{
+  "id": "037",
+  "branch": "main",
+  "name": "core--live-scripts-commonjs-module-scope",
+  "category": "core",
+  "description": "Every script under tools/home-assistant-live/ is CommonJS: ha_ws_util.js ends in `module.exports = { connectWs, rest }` and each apply_*/validate_*/investigate_* script consumes it with require(). On 2026-09-19 the monorepo root gained /Users/krasi/koeff-gitroot-main/package.json with \"type\": \"module\" for the workflow engine. Node resolves the nearest package.json upward from a file's own directory, and tf-home-lab has none, so that root declaration silently reclassified every .js in this repo as ESM. Under ESM the `module.exports = ...` assignment is inert, so require() of the helper yields an empty namespace and every consumer dies with \"rest is not a function\". This was found on 2026-09-23 while diagnosing a live climate complaint: no live inspection, patch or validation script in this repo had been runnable for four days, including validate_logic.js, which makes the repo's own eval regression suite unrunnable. Fix is a repo-local package.json declaring \"type\": \"commonjs\", which restores the pre-2026-09-19 semantics without touching the root file the workflow engine depends on.",
+  "implementation": {
+    "files": [
+      "package.json"
+    ],
+    "changes": [
+      "New tf-home-lab/package.json declaring \"type\": \"commonjs\", private, with no dependencies and no scripts - its only job is to stop the monorepo root's \"type\": \"module\" from reaching this repo's .js files",
+      "Nothing else changes: no file renamed to .cjs (which would break every require() path and every README/doc reference), and the root package.json is left untouched because the workflow engine requires ESM"
+    ]
+  },
+  "validation": {
+    "checks": [
+      "require() of tools/home-assistant-live/ha_ws_util.js returns both exported names, not an empty object",
+      "A representative consumer script loads and runs against live Home Assistant without the 'rest is not a function' TypeError",
+      "validate_logic.js --all runs to completion, which was impossible while the repo was treated as ESM",
+      "The monorepo root package.json is unmodified, so the workflow engine's ESM resolution is unaffected",
+      "Node resolves the repo-local package.json rather than the root one for files under tools/"
+    ],
+    "evidence": [
+      "C1: node -e \"console.log(Object.keys(require('./tools/home-assistant-live/ha_ws_util.js')))\" -> [ 'connectWs', 'rest' ]",
+      "C2: node tools/home-assistant-live/apply_manual_override_ac_calibration.js (dry run) reached live HA and reported 'already applied - no-op' for all three rooms, 'dry run - 0 automation(s) would change'",
+      "C3: node tools/home-assistant-live/validate_logic.js --all ran all 12 suites to completion (018-029)",
+      "C4: git status on the monorepo root package.json is clean; it still declares \"type\": \"module\"",
+      "C5: the repo-local package.json is the nearest one above tools/, so Node resolves it first"
+    ]
+  },
+  "status": "pass",
+  "notes": [
+    "The eval suite's failure set after the fix is pre-existing and unrelated: 018 3/8, 019 4/6, 021 2/4, 024 5/6, 025 1/3, 028 2/5, 029 4/5. 020, 022, 023, 026, 027 pass.",
+    "029 C-fresh fails on sensor.miaomiaoce_t2_5249_temperature at 21.1h > 5h (bedroomb primary, battery 10%). That is a dead battery in the field, independently corroborating the same-day owner report, not a code regression.",
+    "Detection latency: four days. Nothing in the repo runs these scripts on a schedule, so an ESM reclassification in a sibling repo silenced the entire live-tooling surface without any signal. A cheap smoke check that requires ha_ws_util.js and asserts both exports would have caught it on 2026-09-19."
+  ]
+}
